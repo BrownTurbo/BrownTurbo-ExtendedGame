@@ -1,29 +1,16 @@
-#if defined _brownturbo_extgame_included
+#if defined _extendedgame_included
     #endinput
 #endif
-#define _brownturbo_extgame_included
+#define _extendedgame_included
 #define _extendedgame_included
 
-/**
- * BrownTurbo-ExtendedGame for SA-MP
- * ASI Client Plugin Communication Header (Packet ID 252)
- *
- * Initial Version: 0.0.1 (Alpha Stage)
- * Framework & Features:
- *   - CJ Skin / Singleplayer Character Customization & Body Morphing
- *   - Server-Side Authoritative Synchronization Engine
- *   - Automatic Stream-In Management (ALS Hooking)
- *   - Client Handshake & ASI Presence Verification
- *
- * Requires: Pawn.RakNet (https://github.com/katursis/Pawn.RakNet)
- */
 
 #if !defined _pawn_raknet_included && !defined PAWNRAKNET_INC_
     #tryinclude <Pawn.RakNet>
 #endif
 
 #if !defined _pawn_raknet_included && !defined PAWNRAKNET_INC_
-    #error "Please include <Pawn.RakNet> before including <extendedgame>!"
+    #error "Please include <Pawn.RakNet as it is a requirement for extendedgame."
 #endif
 
 #if !defined MAX_PLAYERS
