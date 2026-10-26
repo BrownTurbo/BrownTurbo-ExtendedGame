@@ -1,3 +1,5 @@
+// this example is generated using AI.
+
 #define FILTERSCRIPT
 #include <a_samp>
 #include <Pawn.RakNet>
