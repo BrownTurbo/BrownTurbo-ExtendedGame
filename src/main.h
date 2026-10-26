@@ -7,7 +7,6 @@
 #include <vector>
 #include <memory>
 
-#include "types.h"
 #include "cj_manager.h"
 #include "packet_handler.h"
 
