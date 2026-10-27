@@ -13,6 +13,8 @@
     #error "Please include <Pawn.RakNet as it is a requirement for extendedgame."
 #endif
 
+#define EXTGAME:: extg_
+
 #if !defined MAX_PLAYERS
     #define MAX_PLAYERS                 (1000)
 #endif
@@ -78,6 +80,37 @@
 #define EXTENDEDGAME_ACTION_SET_JETPACK_OFFSET        (44)
 #define EXTENDEDGAME_ACTION_RESET_JETPACK_OFFSET      (45)
 
+// ExtendedGame Vision Actions
+#define EXTENDEDGAME_ACTION_TOGGLE_NIGHT_VISION       (46)
+#define EXTENDEDGAME_ACTION_TOGGLE_THERMAL_VISION     (47)
+
+// ExtendedGame Weapon Reload Actions
+#define EXTENDEDGAME_ACTION_SET_NO_RELOAD             (48)
+#define EXTENDEDGAME_ACTION_TOGGLE_SWITCH_RELOAD      (49)
+#define EXTENDEDGAME_ACTION_TOGGLE_QUICK_RELOAD       (50)
+
+// ExtendedGame Physics & Movement Actions
+#define EXTENDEDGAME_ACTION_TOGGLE_INFINITE_OXYGEN    (51)
+#define EXTENDEDGAME_ACTION_SET_PLAYER_PED_ANIMS      (52)
+#define EXTENDEDGAME_ACTION_TOGGLE_CURSOR             (53)
+
+// ExtendedGame Plane Radar Altimeter Color (Hexadecimal RGBA)
+#define EXTENDEDGAME_ACTION_SET_PLANE_RADAR_COLOR     (54)
+
+// ExtendedGame Pause Menu Event (Client -> Server)
+#define EXTENDEDGAME_ACTION_PAUSE_MENU_EVENT          (55)
+
+// ExtendedGame Sun Color Actions (Hexadecimal RGBA)
+#define EXTENDEDGAME_ACTION_SET_SUN_COLOR             (56)
+#define EXTENDEDGAME_ACTION_RESET_SUN_COLOR           (57)
+
+// ExtendedGame Moon Color Actions (Hexadecimal RGBA)
+#define EXTENDEDGAME_ACTION_SET_MOON_COLOR            (58)
+#define EXTENDEDGAME_ACTION_RESET_MOON_COLOR          (59)
+
+// ExtendedGame Vehicle Speed Blur Motion Action
+#define EXTENDEDGAME_ACTION_TOGGLE_VEHICLE_BLUR       (60)
+
 #define MAX_WATER_ZONES                               (128)
 #define INVALID_WATER_ZONE                            (0xFFFF)
 
@@ -90,15 +123,15 @@ enum E_EXTG_WATER_ZONE {
     Float:wzLevel,
     Float:wzBottomZ
 };
-static stock g_GlobalWaterZones[MAX_WATER_ZONES][E_EXTG_WATER_ZONE];
-static stock g_ActiveWaterZonesCount = 0;
+static stock EXTGAME::GlobalWaterZones[MAX_WATER_ZONES][E_EXTG_WATER_ZONE];
+static stock EXTGAME::ActiveWaterZonesCount = 0;
 
-static stock bool:g_GlobalWaterLevelSet;
-static stock Float:g_GlobalWaterLevel;
-static stock bool:g_GlobalWaterIncludeNonSea = true;
-static stock bool:g_GlobalWaterIncludeSea = true;
-static stock bool:g_GlobalWaterIncludeOutside = true;
-static stock Float:g_GlobalWaterWaveHeight;
+static stock bool:EXTGAME::GlobalWaterLevelSet;
+static stock Float:EXTGAME::GlobalWaterLevel;
+static stock bool:EXTGAME::GlobalWaterIncludeNonSea = true;
+static stock bool:EXTGAME::GlobalWaterIncludeSea = true;
+static stock bool:EXTGAME::GlobalWaterIncludeOutside = true;
+static stock Float:EXTGAME::GlobalWaterWaveHeight;
 
 enum E_EXTG_TD_ROTATION {
     bool:tdRotEnabled,
@@ -107,11 +140,11 @@ enum E_EXTG_TD_ROTATION {
     Float:tdRotPivotY,
     Float:tdRotSpinSpeed
 };
-static stock g_GlobalTextDrawRotation[MAX_TEXT_DRAWS][E_EXTG_TD_ROTATION];
-static stock g_ActiveTextDrawRotationsCount = 0;
-static stock g_PlayerTextDrawRotation[MAX_PLAYERS][MAX_PLAYER_TEXT_DRAWS][E_EXTG_TD_ROTATION];
+static stock EXTGAME::GlobalTextDrawRotation[MAX_TEXT_DRAWS][E_EXTG_TD_ROTATION];
+static stock EXTGAME::ActiveTextDrawRotationsCount = 0;
+static stock EXTGAME::PlayerTextDrawRotation[MAX_PLAYERS][MAX_PLAYER_TEXT_DRAWS][E_EXTG_TD_ROTATION];
 
-// HUD Component Defines (UG:MP Parity)
+// HUD Component Defines (UG:MP Parity & ASCM Extended)
 #define HUD_COMPONENT_AMMO                  1
 #define HUD_COMPONENT_WEAPONICON            2
 #define HUD_COMPONENT_HEALTH                4
@@ -121,7 +154,43 @@ static stock g_PlayerTextDrawRotation[MAX_PLAYERS][MAX_PLAYER_TEXT_DRAWS][E_EXTG
 #define HUD_COMPONENT_CROSSHAIR             64
 #define HUD_COMPONENT_MONEY                 128
 #define HUD_COMPONENT_LASERDOT              256
-#define HUD_COMPONENT_ALL                   (511)
+#define HUD_COMPONENT_WANTED                512
+#define HUD_COMPONENT_RADIO                 1024
+#define HUD_COMPONENT_RADIO_TUNING          2048
+#define HUD_COMPONENT_CLOCK                 4096
+#define HUD_COMPONENT_ALL                   (8191)
+
+// ASCM-Style HUD Component Colour Index Constants
+#define HUD_COLOUR_MONEY                    (0)
+#define HUD_COLOUR_MONEY_NEGATIVE           (1)
+#define HUD_COLOUR_ARMOUR                   (2)
+#define HUD_COLOUR_HEALTH                   (3)
+#define HUD_COLOUR_BREATH                   (4)
+#define HUD_COLOUR_AMMO                     (5)
+#define HUD_COLOUR_WANTED                   (6)
+#define HUD_COLOUR_RADIO                    (7)
+#define HUD_COLOUR_RADIO_TUNING             (8)
+#define HUD_COLOUR_CLOCK                    (9)
+
+// Pause Menu Event Types
+#define PAUSE_MENU_EVENT_OPEN               (1)
+#define PAUSE_MENU_EVENT_CLOSE              (2)
+#define PAUSE_MENU_EVENT_SUBMENU            (3)
+
+// Pause Menu Pages (FrontEndMenuManager page IDs)
+#define PAUSE_MENU_STATS                    (0)
+#define PAUSE_MENU_START_GAME               (1)
+#define PAUSE_MENU_BRIEF                    (2)
+#define PAUSE_MENU_AUDIO                    (3)
+#define PAUSE_MENU_DISPLAY                  (4)
+#define PAUSE_MENU_MAP                      (5)
+#define PAUSE_MENU_LANGUAGE                 (28)
+#define PAUSE_MENU_OPTIONS                  (33)
+#define PAUSE_MENU_QUIT                     (35)
+#define PAUSE_MENU_CONTROLS                 (36)
+#define PAUSE_MENU_REDEFINE                 (37)
+#define PAUSE_MENU_MOUSE                    (39)
+#define PAUSE_MENU_MAIN                     (41)
 
 //// Affects how players can get knocked off bikes
 #define BIKE_KNOCK_OFF_DEFAULT          (0)
@@ -182,80 +251,131 @@ static stock g_PlayerTextDrawRotation[MAX_PLAYERS][MAX_PLAYER_TEXT_DRAWS][E_EXTG
 #define CJ_CLOTHES_HEAD_BALD            "bald", "head"
 
 // Server-side authoritative storage
-static stock bool:g_PlayerCJActive[MAX_PLAYERS];
-static stock Float:g_PlayerCJFat[MAX_PLAYERS];
-static stock Float:g_PlayerCJMuscle[MAX_PLAYERS];
-static stock g_PlayerCJTexture[MAX_PLAYERS][CJ_SLOT_COUNT][32];
-static stock g_PlayerCJModel[MAX_PLAYERS][CJ_SLOT_COUNT][32];
+static stock bool:EXTGAME::PlayerCJActive[MAX_PLAYERS];
+static stock Float:EXTGAME::PlayerCJFat[MAX_PLAYERS];
+static stock Float:EXTGAME::PlayerCJMuscle[MAX_PLAYERS];
+static stock EXTGAME::PlayerCJTexture[MAX_PLAYERS][CJ_SLOT_COUNT][32];
+static stock EXTGAME::PlayerCJModel[MAX_PLAYERS][CJ_SLOT_COUNT][32];
 
 // Server-side presence tracking for client ASI plugin
-static stock bool:g_PlayerHasPlugin[MAX_PLAYERS];
-static stock g_PlayerPluginVersion[MAX_PLAYERS];
-static stock bool:g_PlayerPluginChecked[MAX_PLAYERS];
+static stock bool:EXTGAME::PlayerHasPlugin[MAX_PLAYERS];
+static stock EXTGAME::PlayerPluginVersion[MAX_PLAYERS];
+static stock bool:EXTGAME::PlayerPluginChecked[MAX_PLAYERS];
 
 // ExtendedGame server-side authoritative state storage
-static stock Float:g_PlayerAircraftHeightLimit[MAX_PLAYERS];
-static stock Float:g_PlayerJetpackHeightLimit[MAX_PLAYERS];
-static stock Float:g_GlobalAircraftHeightLimit = 800.0;
-static stock Float:g_GlobalJetpackHeightLimit = 100.0;
+static stock Float:EXTGAME::PlayerAircraftHeightLimit[MAX_PLAYERS];
+static stock Float:EXTGAME::PlayerJetpackHeightLimit[MAX_PLAYERS];
+static stock Float:EXTGAME::GlobalAircraftHeightLimit = 800.0;
+static stock Float:EXTGAME::GlobalJetpackHeightLimit = 100.0;
 
 // ExtendedGame Jetpack Placement & Orientation storage
-static stock Float:g_PlayerJetpackOffsetX[MAX_PLAYERS];
-static stock Float:g_PlayerJetpackOffsetY[MAX_PLAYERS];
-static stock Float:g_PlayerJetpackOffsetZ[MAX_PLAYERS];
-static stock Float:g_PlayerJetpackRotAngle[MAX_PLAYERS];
-static stock Float:g_PlayerJetpackRotAxisX[MAX_PLAYERS];
-static stock Float:g_PlayerJetpackRotAxisY[MAX_PLAYERS];
-static stock Float:g_PlayerJetpackRotAxisZ[MAX_PLAYERS];
+static stock Float:EXTGAME::PlayerJetpackOffsetX[MAX_PLAYERS];
+static stock Float:EXTGAME::PlayerJetpackOffsetY[MAX_PLAYERS];
+static stock Float:EXTGAME::PlayerJetpackOffsetZ[MAX_PLAYERS];
+static stock Float:EXTGAME::PlayerJetpackRotAngle[MAX_PLAYERS];
+static stock Float:EXTGAME::PlayerJetpackRotAxisX[MAX_PLAYERS];
+static stock Float:EXTGAME::PlayerJetpackRotAxisY[MAX_PLAYERS];
+static stock Float:EXTGAME::PlayerJetpackRotAxisZ[MAX_PLAYERS];
 
-static stock Float:g_GlobalJetpackOffsetX  = 0.10;
-static stock Float:g_GlobalJetpackOffsetY  = -0.38;
-static stock Float:g_GlobalJetpackOffsetZ  = 0.00;
-static stock Float:g_GlobalJetpackRotAngle = 90.0;
-static stock Float:g_GlobalJetpackRotAxisX = 0.0;
-static stock Float:g_GlobalJetpackRotAxisY = 1.0;
-static stock Float:g_GlobalJetpackRotAxisZ = 0.0;
-static stock g_PlayerKnockOffBike[MAX_PLAYERS];
-static stock bool:g_PlayerFireProof[MAX_PLAYERS];
-static stock bool:g_PlayerInfiniteSprint[MAX_PLAYERS];
-static stock bool:g_PlayerSunEnabled[MAX_PLAYERS];
-static stock g_GlobalKnockOffBike;
-static stock bool:g_GlobalFireProof;
-static stock bool:g_GlobalInfiniteSprint;
-static stock bool:g_GlobalSunEnabled = true;
+static stock Float:EXTGAME::GlobalJetpackOffsetX  = 0.10;
+static stock Float:EXTGAME::GlobalJetpackOffsetY  = -0.38;
+static stock Float:EXTGAME::GlobalJetpackOffsetZ  = 0.00;
+static stock Float:EXTGAME::GlobalJetpackRotAngle = 90.0;
+static stock Float:EXTGAME::GlobalJetpackRotAxisX = 0.0;
+static stock Float:EXTGAME::GlobalJetpackRotAxisY = 1.0;
+static stock Float:EXTGAME::GlobalJetpackRotAxisZ = 0.0;
+static stock EXTGAME::PlayerKnockOffBike[MAX_PLAYERS];
+static stock bool:EXTGAME::PlayerFireProof[MAX_PLAYERS];
+static stock bool:EXTGAME::PlayerInfiniteSprint[MAX_PLAYERS];
+static stock bool:EXTGAME::PlayerSunEnabled[MAX_PLAYERS];
+static stock EXTGAME::GlobalKnockOffBike;
+static stock bool:EXTGAME::GlobalFireProof;
+static stock bool:EXTGAME::GlobalInfiniteSprint;
+static stock bool:EXTGAME::GlobalSunEnabled = true;
 
 // Global Sky Defaults
-static stock bool:g_GlobalMoonEnabled         = true;
-static stock bool:g_GlobalStarsEnabled        = true;
-static stock bool:g_GlobalLowCloudsEnabled    = true;
-static stock bool:g_GlobalFluffyCloudsEnabled = true;
-static stock bool:g_GlobalRainbowEnabled      = true;
+static stock bool:EXTGAME::GlobalMoonEnabled         = true;
+static stock bool:EXTGAME::GlobalStarsEnabled        = true;
+static stock bool:EXTGAME::GlobalLowCloudsEnabled    = true;
+static stock bool:EXTGAME::GlobalFluffyCloudsEnabled = true;
+static stock bool:EXTGAME::GlobalRainbowEnabled      = true;
 
 // ExtendedGame Sky and HUD storage
-static stock bool:g_PlayerMoonEnabled[MAX_PLAYERS];
-static stock bool:g_PlayerStarsEnabled[MAX_PLAYERS];
-static stock bool:g_PlayerLowCloudsEnabled[MAX_PLAYERS];
-static stock bool:g_PlayerFluffyCloudsEnabled[MAX_PLAYERS];
-static stock bool:g_PlayerRainbowEnabled[MAX_PLAYERS];
+static stock bool:EXTGAME::PlayerMoonEnabled[MAX_PLAYERS];
+static stock bool:EXTGAME::PlayerStarsEnabled[MAX_PLAYERS];
+static stock bool:EXTGAME::PlayerLowCloudsEnabled[MAX_PLAYERS];
+static stock bool:EXTGAME::PlayerFluffyCloudsEnabled[MAX_PLAYERS];
+static stock bool:EXTGAME::PlayerRainbowEnabled[MAX_PLAYERS];
 
-static stock g_PlayerHUDComponents[MAX_PLAYERS];
-static stock g_PlayerHUDColourAmmo[MAX_PLAYERS];
-static stock g_PlayerHUDColourWeaponIcon[MAX_PLAYERS];
-static stock g_PlayerHUDColourHealth[MAX_PLAYERS];
-static stock g_PlayerHUDColourOxygen[MAX_PLAYERS];
-static stock g_PlayerHUDColourArmour[MAX_PLAYERS];
-static stock g_PlayerHUDColourRadar[MAX_PLAYERS];
-static stock g_PlayerHUDColourCrosshair[MAX_PLAYERS];
-static stock g_PlayerHUDColourMoney[MAX_PLAYERS];
-static stock g_PlayerHUDColourLaserDot[MAX_PLAYERS];
-static stock g_GlobalHUDComponents = 511;
-static stock g_GlobalHUDColours[9];
-static stock bool:g_PlayerWaterLevelSet[MAX_PLAYERS];
-static stock Float:g_PlayerWaterLevel[MAX_PLAYERS];
-static stock bool:g_PlayerWaterIncludeNonSea[MAX_PLAYERS];
-static stock bool:g_PlayerWaterIncludeSea[MAX_PLAYERS];
-static stock bool:g_PlayerWaterIncludeOutside[MAX_PLAYERS];
-static stock Float:g_PlayerWaterWaveHeight[MAX_PLAYERS];
+static stock EXTGAME::PlayerHUDComponents[MAX_PLAYERS];
+static stock EXTGAME::PlayerHUDColourAmmo[MAX_PLAYERS];
+static stock EXTGAME::PlayerHUDColourWeaponIcon[MAX_PLAYERS];
+static stock EXTGAME::PlayerHUDColourHealth[MAX_PLAYERS];
+static stock EXTGAME::PlayerHUDColourOxygen[MAX_PLAYERS];
+static stock EXTGAME::PlayerHUDColourArmour[MAX_PLAYERS];
+static stock EXTGAME::PlayerHUDColourRadar[MAX_PLAYERS];
+static stock EXTGAME::PlayerHUDColourCrosshair[MAX_PLAYERS];
+static stock EXTGAME::PlayerHUDColourMoney[MAX_PLAYERS];
+static stock EXTGAME::PlayerHUDColourLaserDot[MAX_PLAYERS];
+static stock EXTGAME::PlayerHUDColourWanted[MAX_PLAYERS];
+static stock EXTGAME::PlayerHUDColourRadio[MAX_PLAYERS];
+static stock EXTGAME::PlayerHUDColourRadioTuning[MAX_PLAYERS];
+static stock EXTGAME::PlayerHUDColourClock[MAX_PLAYERS];
+static stock EXTGAME::GlobalHUDComponents = 8191;
+static stock EXTGAME::GlobalHUDColours[13];
+
+// Vision storage
+static stock bool:EXTGAME::PlayerNightVision[MAX_PLAYERS];
+static stock bool:EXTGAME::PlayerThermalVision[MAX_PLAYERS];
+static stock bool:EXTGAME::GlobalNightVision;
+static stock bool:EXTGAME::GlobalThermalVision;
+
+// Weapon reload storage
+static stock bool:EXTGAME::PlayerNoReload[MAX_PLAYERS];
+static stock bool:EXTGAME::PlayerSwitchReload[MAX_PLAYERS] = { true, ... };
+static stock bool:EXTGAME::PlayerQuickReload[MAX_PLAYERS];
+static stock bool:EXTGAME::GlobalNoReload;
+static stock bool:EXTGAME::GlobalSwitchReload = true;
+static stock bool:EXTGAME::GlobalQuickReload;
+
+// Physics & movement storage
+static stock bool:EXTGAME::PlayerInfiniteOxygen[MAX_PLAYERS];
+static stock EXTGAME::PlayerPedAnims[MAX_PLAYERS];
+static stock bool:EXTGAME::PlayerCursor[MAX_PLAYERS];
+static stock bool:EXTGAME::GlobalInfiniteOxygen;
+
+// Plane radar altimeter storage (hexadecimal 0xRRGGBBAA)
+static stock EXTGAME::PlayerPlaneRadarColor[MAX_PLAYERS] = { 0xFFFFFFFF, ... };
+static stock EXTGAME::GlobalPlaneRadarColor = 0xFFFFFFFF;
+
+// Sun color storage (hexadecimal 0xRRGGBBAA)
+static stock bool:EXTGAME::PlayerSunColorSet[MAX_PLAYERS];
+static stock EXTGAME::PlayerSunCoreColor[MAX_PLAYERS] = { 0xFFFFFFFF, ... };
+static stock EXTGAME::PlayerSunCoronaColor[MAX_PLAYERS] = { 0xFFFFFFFF, ... };
+static stock bool:EXTGAME::GlobalSunColorSet;
+static stock EXTGAME::GlobalSunCoreColor = 0xFFFFFFFF;
+static stock EXTGAME::GlobalSunCoronaColor = 0xFFFFFFFF;
+
+// Moon color storage (hexadecimal 0xRRGGBBAA)
+static stock bool:EXTGAME::PlayerMoonColorSet[MAX_PLAYERS];
+static stock EXTGAME::PlayerMoonColor[MAX_PLAYERS] = { 0xFFFFFFFF, ... };
+static stock bool:EXTGAME::GlobalMoonColorSet;
+static stock EXTGAME::GlobalMoonColor = 0xFFFFFFFF;
+
+// Vehicle speed blur storage
+static stock bool:EXTGAME::PlayerVehicleBlur[MAX_PLAYERS];
+static stock EXTGAME::PlayerVehicleBlurIntensity[MAX_PLAYERS] = { 36, ... };
+static stock bool:EXTGAME::GlobalVehicleBlur;
+static stock EXTGAME::GlobalVehicleBlurIntensity = 36;
+
+// Pause menu tracking storage
+static stock bool:EXTGAME::PlayerInPauseMenu[MAX_PLAYERS];
+static stock bool:EXTGAME::PlayerWaterLevelSet[MAX_PLAYERS];
+static stock Float:EXTGAME::PlayerWaterLevel[MAX_PLAYERS];
+static stock bool:EXTGAME::PlayerWaterIncludeNonSea[MAX_PLAYERS];
+static stock bool:EXTGAME::PlayerWaterIncludeSea[MAX_PLAYERS];
+static stock bool:EXTGAME::PlayerWaterIncludeOutside[MAX_PLAYERS];
+static stock Float:EXTGAME::PlayerWaterWaveHeight[MAX_PLAYERS];
 
 static stock bool:_IsPlayerStreamedIn(targetid, forplayerid)
 {
@@ -273,7 +393,7 @@ static stock _SendPlayerBikeState(recipient, targetid)
         PR_UINT8, EXTENDEDGAME_PACKET_ID,
         PR_UINT16, targetid,
         PR_UINT8, EXTENDEDGAME_ACTION_SET_BIKE_KNOCK_OFF,
-        PR_UINT8, g_PlayerKnockOffBike[targetid]
+        PR_UINT8, EXTGAME::PlayerKnockOffBike[targetid]
     );
     PR_SendPacket(bs, recipient, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
     BS_Delete(bs);
@@ -286,7 +406,7 @@ static stock _SendPlayerFireProofState(recipient, targetid)
         PR_UINT8, EXTENDEDGAME_PACKET_ID,
         PR_UINT16, targetid,
         PR_UINT8, EXTENDEDGAME_ACTION_SET_FIRE_PROOF,
-        PR_UINT8, g_PlayerFireProof[targetid] ? 1 : 0
+        PR_UINT8, EXTGAME::PlayerFireProof[targetid] ? 1 : 0
     );
     PR_SendPacket(bs, recipient, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
     BS_Delete(bs);
@@ -298,11 +418,12 @@ static stock _SyncExtGameActorState(targetid, recipient)
         recipient < 0 || recipient >= MAX_PLAYERS || !IsPlayerConnected(recipient))
         return 0;
 
-    if (g_PlayerCJActive[targetid] || GetPlayerSkin(targetid) == 0)
+    if (EXTGAME::PlayerCJActive[targetid] || GetPlayerSkin(targetid) == 0)
         SyncPlayerCJForPlayer(targetid, recipient);
 
     _SendPlayerBikeState(recipient, targetid);
     _SendPlayerFireProofState(recipient, targetid);
+    _SendPlayerPedAnimsPacket(recipient, targetid, EXTGAME::PlayerPedAnims[targetid]);
     return 1;
 }
 
@@ -311,76 +432,104 @@ static stock _SyncPlayerExtendedGameSettings(playerid)
     if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid))
         return 0;
 
-    SetAircraftHeightLimitForPlayer(playerid, g_PlayerAircraftHeightLimit[playerid]);
-    SetJetpackHeightLimitForPlayer(playerid, g_PlayerJetpackHeightLimit[playerid]);
+    SetAircraftHeightLimitForPlayer(playerid, EXTGAME::PlayerAircraftHeightLimit[playerid]);
+    SetJetpackHeightLimitForPlayer(playerid, EXTGAME::PlayerJetpackHeightLimit[playerid]);
     _SendJetpackOffsetPacket(playerid,
-        g_PlayerJetpackOffsetX[playerid],
-        g_PlayerJetpackOffsetY[playerid],
-        g_PlayerJetpackOffsetZ[playerid],
-        g_PlayerJetpackRotAngle[playerid],
-        g_PlayerJetpackRotAxisX[playerid],
-        g_PlayerJetpackRotAxisY[playerid],
-        g_PlayerJetpackRotAxisZ[playerid]
+        EXTGAME::PlayerJetpackOffsetX[playerid],
+        EXTGAME::PlayerJetpackOffsetY[playerid],
+        EXTGAME::PlayerJetpackOffsetZ[playerid],
+        EXTGAME::PlayerJetpackRotAngle[playerid],
+        EXTGAME::PlayerJetpackRotAxisX[playerid],
+        EXTGAME::PlayerJetpackRotAxisY[playerid],
+        EXTGAME::PlayerJetpackRotAxisZ[playerid]
     );
-    TogglePlayerInfiniteSprint(playerid, g_PlayerInfiniteSprint[playerid]);
-    TogglePlayerSun(playerid, g_PlayerSunEnabled[playerid]);
-    TogglePlayerMoon(playerid, g_PlayerMoonEnabled[playerid]);
-    TogglePlayerStars(playerid, g_PlayerStarsEnabled[playerid]);
-    TogglePlayerLowClouds(playerid, g_PlayerLowCloudsEnabled[playerid]);
-    TogglePlayerFluffyClouds(playerid, g_PlayerFluffyCloudsEnabled[playerid]);
-    TogglePlayerRainbow(playerid, g_PlayerRainbowEnabled[playerid]);
-    TogglePlayerHUDComponents(playerid, g_PlayerHUDComponents[playerid]);
+    TogglePlayerInfiniteSprint(playerid, EXTGAME::PlayerInfiniteSprint[playerid]);
+    TogglePlayerSun(playerid, EXTGAME::PlayerSunEnabled[playerid]);
+    TogglePlayerMoon(playerid, EXTGAME::PlayerMoonEnabled[playerid]);
+    TogglePlayerStars(playerid, EXTGAME::PlayerStarsEnabled[playerid]);
+    TogglePlayerLowClouds(playerid, EXTGAME::PlayerLowCloudsEnabled[playerid]);
+    TogglePlayerFluffyClouds(playerid, EXTGAME::PlayerFluffyCloudsEnabled[playerid]);
+    TogglePlayerRainbow(playerid, EXTGAME::PlayerRainbowEnabled[playerid]);
+    TogglePlayerHUDComponents(playerid, EXTGAME::PlayerHUDComponents[playerid]);
 
-    SetPlayerHUDComponentsColour(playerid, HUD_COMPONENT_AMMO, g_PlayerHUDColourAmmo[playerid]);
-    SetPlayerHUDComponentsColour(playerid, HUD_COMPONENT_WEAPONICON, g_PlayerHUDColourWeaponIcon[playerid]);
-    SetPlayerHUDComponentsColour(playerid, HUD_COMPONENT_HEALTH, g_PlayerHUDColourHealth[playerid]);
-    SetPlayerHUDComponentsColour(playerid, HUD_COMPONENT_OXYGEN, g_PlayerHUDColourOxygen[playerid]);
-    SetPlayerHUDComponentsColour(playerid, HUD_COMPONENT_ARMOUR, g_PlayerHUDColourArmour[playerid]);
-    SetPlayerHUDComponentsColour(playerid, HUD_COMPONENT_RADAR, g_PlayerHUDColourRadar[playerid]);
-    SetPlayerHUDComponentsColour(playerid, HUD_COMPONENT_CROSSHAIR, g_PlayerHUDColourCrosshair[playerid]);
-    SetPlayerHUDComponentsColour(playerid, HUD_COMPONENT_MONEY, g_PlayerHUDColourMoney[playerid]);
-    SetPlayerHUDComponentsColour(playerid, HUD_COMPONENT_LASERDOT, g_PlayerHUDColourLaserDot[playerid]);
+    SetPlayerHUDComponentsColour(playerid, HUD_COMPONENT_AMMO, EXTGAME::PlayerHUDColourAmmo[playerid]);
+    SetPlayerHUDComponentsColour(playerid, HUD_COMPONENT_WEAPONICON, EXTGAME::PlayerHUDColourWeaponIcon[playerid]);
+    SetPlayerHUDComponentsColour(playerid, HUD_COMPONENT_HEALTH, EXTGAME::PlayerHUDColourHealth[playerid]);
+    SetPlayerHUDComponentsColour(playerid, HUD_COMPONENT_OXYGEN, EXTGAME::PlayerHUDColourOxygen[playerid]);
+    SetPlayerHUDComponentsColour(playerid, HUD_COMPONENT_ARMOUR, EXTGAME::PlayerHUDColourArmour[playerid]);
+    SetPlayerHUDComponentsColour(playerid, HUD_COMPONENT_RADAR, EXTGAME::PlayerHUDColourRadar[playerid]);
+    SetPlayerHUDComponentsColour(playerid, HUD_COMPONENT_CROSSHAIR, EXTGAME::PlayerHUDColourCrosshair[playerid]);
+    SetPlayerHUDComponentsColour(playerid, HUD_COMPONENT_MONEY, EXTGAME::PlayerHUDColourMoney[playerid]);
+    SetPlayerHUDComponentsColour(playerid, HUD_COMPONENT_LASERDOT, EXTGAME::PlayerHUDColourLaserDot[playerid]);
+    SetPlayerHUDComponentsColour(playerid, HUD_COMPONENT_WANTED, EXTGAME::PlayerHUDColourWanted[playerid]);
+    SetPlayerHUDComponentsColour(playerid, HUD_COMPONENT_RADIO, EXTGAME::PlayerHUDColourRadio[playerid]);
+    SetPlayerHUDComponentsColour(playerid, HUD_COMPONENT_RADIO_TUNING, EXTGAME::PlayerHUDColourRadioTuning[playerid]);
+    SetPlayerHUDComponentsColour(playerid, HUD_COMPONENT_CLOCK, EXTGAME::PlayerHUDColourClock[playerid]);
 
-    if (g_PlayerWaterLevelSet[playerid]) {
+    ToggleNightVision(playerid, EXTGAME::PlayerNightVision[playerid]);
+    ToggleThermalVision(playerid, EXTGAME::PlayerThermalVision[playerid]);
+    SetPlayerNoReload(playerid, EXTGAME::PlayerNoReload[playerid]);
+    TogglePlayerSwitchReload(playerid, EXTGAME::PlayerSwitchReload[playerid]);
+    ToggleQuickReloadForPlayer(playerid, EXTGAME::PlayerQuickReload[playerid]);
+    TogglePlayerInfiniteOxygen(playerid, EXTGAME::PlayerInfiniteOxygen[playerid]);
+    TogglePlayerCursor(playerid, EXTGAME::PlayerCursor[playerid]);
+
+    SetPlaneRadarColor(playerid, EXTGAME::PlayerPlaneRadarColor[playerid]);
+
+    if (EXTGAME::PlayerSunColorSet[playerid]) {
+        SetPlayerSunColor(playerid, EXTGAME::PlayerSunCoreColor[playerid], EXTGAME::PlayerSunCoronaColor[playerid]);
+    } else {
+        ResetPlayerSunColor(playerid);
+    }
+
+    if (EXTGAME::PlayerMoonColorSet[playerid]) {
+        SetPlayerMoonColor(playerid, EXTGAME::PlayerMoonColor[playerid]);
+    } else {
+        ResetPlayerMoonColor(playerid);
+    }
+
+    TogglePlayerVehicleBlur(playerid, EXTGAME::PlayerVehicleBlur[playerid], EXTGAME::PlayerVehicleBlurIntensity[playerid]);
+
+    if (EXTGAME::PlayerWaterLevelSet[playerid]) {
         SetPlayerWaterLevel(
             playerid,
-            g_PlayerWaterLevel[playerid],
-            g_PlayerWaterIncludeNonSea[playerid],
-            g_PlayerWaterIncludeSea[playerid],
-            g_PlayerWaterIncludeOutside[playerid]
+            EXTGAME::PlayerWaterLevel[playerid],
+            EXTGAME::PlayerWaterIncludeNonSea[playerid],
+            EXTGAME::PlayerWaterIncludeSea[playerid],
+            EXTGAME::PlayerWaterIncludeOutside[playerid]
         );
     } else {
         ResetPlayerWaterLevel(playerid);
     }
-    SetPlayerWaterWaveHeight(playerid, g_PlayerWaterWaveHeight[playerid]);
+    SetPlayerWaterWaveHeight(playerid, EXTGAME::PlayerWaterWaveHeight[playerid]);
 
-    if (g_ActiveTextDrawRotationsCount > 0) {
+    if (EXTGAME::ActiveTextDrawRotationsCount > 0) {
         for (new _td = 0; _td < MAX_TEXT_DRAWS; _td++) {
-            if (g_GlobalTextDrawRotation[_td][tdRotEnabled]) {
+            if (EXTGAME::GlobalTextDrawRotation[_td][tdRotEnabled]) {
                 SetTextDrawRotationForPlayer(
                     playerid,
                     Text:_td,
-                    g_GlobalTextDrawRotation[_td][tdRotAngle],
-                    g_GlobalTextDrawRotation[_td][tdRotPivotX],
-                    g_GlobalTextDrawRotation[_td][tdRotPivotY],
-                    g_GlobalTextDrawRotation[_td][tdRotSpinSpeed]
+                    EXTGAME::GlobalTextDrawRotation[_td][tdRotAngle],
+                    EXTGAME::GlobalTextDrawRotation[_td][tdRotPivotX],
+                    EXTGAME::GlobalTextDrawRotation[_td][tdRotPivotY],
+                    EXTGAME::GlobalTextDrawRotation[_td][tdRotSpinSpeed]
                 );
             }
         }
     }
 
-    if (g_ActiveWaterZonesCount > 0) {
+    if (EXTGAME::ActiveWaterZonesCount > 0) {
         for (new _wz = 0; _wz < MAX_WATER_ZONES; _wz++) {
-            if (g_GlobalWaterZones[_wz][wzActive]) {
+            if (EXTGAME::GlobalWaterZones[_wz][wzActive]) {
                 CreateWaterZoneForPlayer(
                     playerid,
                     _wz,
-                    g_GlobalWaterZones[_wz][wzMinX],
-                    g_GlobalWaterZones[_wz][wzMinY],
-                    g_GlobalWaterZones[_wz][wzMaxX],
-                    g_GlobalWaterZones[_wz][wzMaxY],
-                    g_GlobalWaterZones[_wz][wzLevel],
-                    g_GlobalWaterZones[_wz][wzBottomZ]
+                    EXTGAME::GlobalWaterZones[_wz][wzMinX],
+                    EXTGAME::GlobalWaterZones[_wz][wzMinY],
+                    EXTGAME::GlobalWaterZones[_wz][wzMaxX],
+                    EXTGAME::GlobalWaterZones[_wz][wzMaxY],
+                    EXTGAME::GlobalWaterZones[_wz][wzLevel],
+                    EXTGAME::GlobalWaterZones[_wz][wzBottomZ]
                 );
             }
         }
@@ -388,7 +537,7 @@ static stock _SyncPlayerExtendedGameSettings(playerid)
     return 1;
 }
 
-// Forward callbacks triggered when a player's plugin status is resolved
+// Forward callback triggered when a player's plugin status is resolved:
 forward OnPlayerExtendedGameCheck(playerid, bool:installed, version);
 
 /**
@@ -396,7 +545,7 @@ forward OnPlayerExtendedGameCheck(playerid, bool:installed, version);
  */
 stock bool:HasPlayerExtendedGame(playerid) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
-    return g_PlayerHasPlugin[playerid];
+    return EXTGAME::PlayerHasPlugin[playerid];
 }
 
 /**
@@ -405,7 +554,7 @@ stock bool:HasPlayerExtendedGame(playerid) {
  */
 stock GetPlayerExtendedGameVersion(playerid) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
-    return g_PlayerPluginVersion[playerid];
+    return EXTGAME::PlayerPluginVersion[playerid];
 }
 
 /**
@@ -462,12 +611,12 @@ static stock _BS_WriteCJString(BitStream:bs, const string[]) {
  */
 stock ResetPlayerCJData(playerid) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
-    g_PlayerCJActive[playerid] = false;
-    g_PlayerCJFat[playerid] = 0.0;
-    g_PlayerCJMuscle[playerid] = 0.0;
+    EXTGAME::PlayerCJActive[playerid] = false;
+    EXTGAME::PlayerCJFat[playerid] = 0.0;
+    EXTGAME::PlayerCJMuscle[playerid] = 0.0;
     for (new s = 0; s < CJ_SLOT_COUNT; s++) {
-        g_PlayerCJTexture[playerid][s][0] = '\0';
-        g_PlayerCJModel[playerid][s][0] = '\0';
+        EXTGAME::PlayerCJTexture[playerid][s][0] = '\0';
+        EXTGAME::PlayerCJModel[playerid][s][0] = '\0';
     }
     return 1;
 }
@@ -477,7 +626,7 @@ stock ResetPlayerCJData(playerid) {
  */
 stock bool:IsPlayerUsingCJSkin(playerid) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
-    return g_PlayerCJActive[playerid];
+    return EXTGAME::PlayerCJActive[playerid];
 }
 
 /**
@@ -485,8 +634,8 @@ stock bool:IsPlayerUsingCJSkin(playerid) {
  */
 stock GetPlayerCJBodyStats(playerid, &Float:fat, &Float:muscle) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
-    fat = g_PlayerCJFat[playerid];
-    muscle = g_PlayerCJMuscle[playerid];
+    fat = EXTGAME::PlayerCJFat[playerid];
+    muscle = EXTGAME::PlayerCJMuscle[playerid];
     return 1;
 }
 
@@ -495,8 +644,8 @@ stock GetPlayerCJBodyStats(playerid, &Float:fat, &Float:muscle) {
  */
 stock GetPlayerCJClothes(playerid, slot, texture[], model[], max_len = 32) {
     if (playerid < 0 || playerid >= MAX_PLAYERS || slot < 0 || slot >= CJ_SLOT_COUNT) return 0;
-    format(texture, max_len, "%s", g_PlayerCJTexture[playerid][slot]);
-    format(model, max_len, "%s", g_PlayerCJModel[playerid][slot]);
+    format(texture, max_len, "%s", EXTGAME::PlayerCJTexture[playerid][slot]);
+    format(model, max_len, "%s", EXTGAME::PlayerCJModel[playerid][slot]);
     return 1;
 }
 
@@ -569,24 +718,24 @@ stock SyncPlayerCJForPlayer(targetid, forplayerid) {
     if (targetid < 0 || targetid >= MAX_PLAYERS || !IsPlayerConnected(targetid)) return 0;
     if (forplayerid < 0 || forplayerid >= MAX_PLAYERS || !IsPlayerConnected(forplayerid)) return 0;
 
-    if (g_PlayerCJActive[targetid]) {
+    if (EXTGAME::PlayerCJActive[targetid]) {
         new slots[CJ_SLOT_COUNT];
         new textures[CJ_SLOT_COUNT][32];
         new models[CJ_SLOT_COUNT][32];
         new count = 0;
 
         for (new s = 0; s < CJ_SLOT_COUNT; s++) {
-            if (g_PlayerCJTexture[targetid][s][0] != '\0') {
+            if (EXTGAME::PlayerCJTexture[targetid][s][0] != '\0') {
                 slots[count] = s;
-                format(textures[count], 32, "%s", g_PlayerCJTexture[targetid][s]);
-                format(models[count], 32, "%s", g_PlayerCJModel[targetid][s]);
+                format(textures[count], 32, "%s", EXTGAME::PlayerCJTexture[targetid][s]);
+                format(models[count], 32, "%s", EXTGAME::PlayerCJModel[targetid][s]);
                 count++;
             }
         }
 
         _SendRawCJOutfitPacket(forplayerid, targetid,
-            g_PlayerCJFat[targetid],
-            g_PlayerCJMuscle[targetid],
+            EXTGAME::PlayerCJFat[targetid],
+            EXTGAME::PlayerCJMuscle[targetid],
             slots, textures, models, count
         );
         return 1;
@@ -632,9 +781,9 @@ stock SetPlayerCJClothes(playerid, targetid, slot, const texture[], const model[
     if (slot < 0 || slot >= CJ_SLOT_COUNT) return 0;
 
     if (targetid >= 0 && targetid < MAX_PLAYERS) {
-        g_PlayerCJActive[targetid] = true;
-        format(g_PlayerCJTexture[targetid][slot], 32, "%s", texture);
-        format(g_PlayerCJModel[targetid][slot], 32, "%s", model);
+        EXTGAME::PlayerCJActive[targetid] = true;
+        format(EXTGAME::PlayerCJTexture[targetid][slot], 32, "%s", texture);
+        format(EXTGAME::PlayerCJModel[targetid][slot], 32, "%s", model);
     }
 
     if (playerid == -1) {
@@ -668,9 +817,9 @@ stock RemovePlayerCJClothes(playerid, targetid, slot, bool:rebuild = true) {
  */
 stock SetPlayerCJBodyStats(playerid, targetid, Float:fat, Float:muscle, bool:rebuild = true) {
     if (targetid >= 0 && targetid < MAX_PLAYERS) {
-        g_PlayerCJActive[targetid] = true;
-        g_PlayerCJFat[targetid] = fat;
-        g_PlayerCJMuscle[targetid] = muscle;
+        EXTGAME::PlayerCJActive[targetid] = true;
+        EXTGAME::PlayerCJFat[targetid] = fat;
+        EXTGAME::PlayerCJMuscle[targetid] = muscle;
     }
 
     new BitStream:bs = BS_New();
@@ -709,16 +858,16 @@ stock SetPlayerCJBodyStats(playerid, targetid, Float:fat, Float:muscle, bool:reb
 stock ResetPlayerCJClothes(playerid, targetid, bool:to_default = true, bool:rebuild = true) {
     if (targetid >= 0 && targetid < MAX_PLAYERS) {
         ResetPlayerCJData(targetid);
-        g_PlayerCJActive[targetid] = true;
+        EXTGAME::PlayerCJActive[targetid] = true;
         if (to_default) {
-            format(g_PlayerCJTexture[targetid][CJ_SLOT_TORSO], 32, "vest");
-            format(g_PlayerCJModel[targetid][CJ_SLOT_TORSO], 32, "vest");
-            format(g_PlayerCJTexture[targetid][CJ_SLOT_LEGS], 32, "jeansdenim");
-            format(g_PlayerCJModel[targetid][CJ_SLOT_LEGS], 32, "jeans");
-            format(g_PlayerCJTexture[targetid][CJ_SLOT_SHOES], 32, "sneakerbincblk");
-            format(g_PlayerCJModel[targetid][CJ_SLOT_SHOES], 32, "sneaker");
-            format(g_PlayerCJTexture[targetid][CJ_SLOT_HEAD], 32, "player_face");
-            format(g_PlayerCJModel[targetid][CJ_SLOT_HEAD], 32, "head");
+            format(EXTGAME::PlayerCJTexture[targetid][CJ_SLOT_TORSO], 32, "vest");
+            format(EXTGAME::PlayerCJModel[targetid][CJ_SLOT_TORSO], 32, "vest");
+            format(EXTGAME::PlayerCJTexture[targetid][CJ_SLOT_LEGS], 32, "jeansdenim");
+            format(EXTGAME::PlayerCJModel[targetid][CJ_SLOT_LEGS], 32, "jeans");
+            format(EXTGAME::PlayerCJTexture[targetid][CJ_SLOT_SHOES], 32, "sneakerbincblk");
+            format(EXTGAME::PlayerCJModel[targetid][CJ_SLOT_SHOES], 32, "sneaker");
+            format(EXTGAME::PlayerCJTexture[targetid][CJ_SLOT_HEAD], 32, "player_face");
+            format(EXTGAME::PlayerCJModel[targetid][CJ_SLOT_HEAD], 32, "head");
         }
     }
 
@@ -780,14 +929,14 @@ stock SetPlayerCJFullOutfit(playerid, targetid, Float:fat, Float:muscle, const s
 
     if (targetid >= 0 && targetid < MAX_PLAYERS) {
         ResetPlayerCJData(targetid);
-        g_PlayerCJActive[targetid] = true;
-        g_PlayerCJFat[targetid] = fat;
-        g_PlayerCJMuscle[targetid] = muscle;
+        EXTGAME::PlayerCJActive[targetid] = true;
+        EXTGAME::PlayerCJFat[targetid] = fat;
+        EXTGAME::PlayerCJMuscle[targetid] = muscle;
         for (new i = 0; i < count; i++) {
             new s = slots[i];
             if (s >= 0 && s < CJ_SLOT_COUNT) {
-                format(g_PlayerCJTexture[targetid][s], 32, "%s", textures[i]);
-                format(g_PlayerCJModel[targetid][s], 32, "%s", models[i]);
+                format(EXTGAME::PlayerCJTexture[targetid][s], 32, "%s", textures[i]);
+                format(EXTGAME::PlayerCJModel[targetid][s], 32, "%s", models[i]);
             }
         }
     }
@@ -892,9 +1041,9 @@ static stock _SendJetpackHeightLimitPacket(recipient, Float:limit) {
  */
 stock SetAircraftHeightLimitForPlayer(playerid, Float:heightLimit) {
     if (playerid == -1) {
-        g_GlobalAircraftHeightLimit = heightLimit;
+        EXTGAME::GlobalAircraftHeightLimit = heightLimit;
         for (new i = 0; i < MAX_PLAYERS; i++) {
-            g_PlayerAircraftHeightLimit[i] = heightLimit;
+            EXTGAME::PlayerAircraftHeightLimit[i] = heightLimit;
             if (IsPlayerConnected(i)) {
                 _SendAircraftHeightLimitPacket(i, heightLimit);
             }
@@ -903,7 +1052,7 @@ stock SetAircraftHeightLimitForPlayer(playerid, Float:heightLimit) {
     }
 
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
-    g_PlayerAircraftHeightLimit[playerid] = heightLimit;
+    EXTGAME::PlayerAircraftHeightLimit[playerid] = heightLimit;
 
     if (IsPlayerConnected(playerid)) {
         _SendAircraftHeightLimitPacket(playerid, heightLimit);
@@ -913,7 +1062,7 @@ stock SetAircraftHeightLimitForPlayer(playerid, Float:heightLimit) {
 
 stock Float:GetPlayerAircraftHeightLimit(playerid) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 800.0;
-    return g_PlayerAircraftHeightLimit[playerid];
+    return EXTGAME::PlayerAircraftHeightLimit[playerid];
 }
 
 /**
@@ -921,9 +1070,9 @@ stock Float:GetPlayerAircraftHeightLimit(playerid) {
  */
 stock SetJetpackHeightLimitForPlayer(playerid, Float:heightLimit) {
     if (playerid == -1) {
-        g_GlobalJetpackHeightLimit = heightLimit;
+        EXTGAME::GlobalJetpackHeightLimit = heightLimit;
         for (new i = 0; i < MAX_PLAYERS; i++) {
-            g_PlayerJetpackHeightLimit[i] = heightLimit;
+            EXTGAME::PlayerJetpackHeightLimit[i] = heightLimit;
             if (IsPlayerConnected(i)) {
                 _SendJetpackHeightLimitPacket(i, heightLimit);
             }
@@ -932,7 +1081,7 @@ stock SetJetpackHeightLimitForPlayer(playerid, Float:heightLimit) {
     }
 
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
-    g_PlayerJetpackHeightLimit[playerid] = heightLimit;
+    EXTGAME::PlayerJetpackHeightLimit[playerid] = heightLimit;
 
     if (IsPlayerConnected(playerid)) {
         _SendJetpackHeightLimitPacket(playerid, heightLimit);
@@ -942,7 +1091,7 @@ stock SetJetpackHeightLimitForPlayer(playerid, Float:heightLimit) {
 
 stock Float:GetPlayerJetpackHeightLimit(playerid) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 100.0;
-    return g_PlayerJetpackHeightLimit[playerid];
+    return EXTGAME::PlayerJetpackHeightLimit[playerid];
 }
 
 static stock _SendJetpackOffsetPacket(recipient, Float:x, Float:y, Float:z, Float:angle, Float:axisX, Float:axisY, Float:axisZ) {
@@ -979,41 +1128,41 @@ static stock _SendResetJetpackOffsetPacket(recipient) {
  */
 stock SetJetpackOffsetForPlayer(playerid, Float:x, Float:y, Float:z) {
     if (playerid == -1) {
-        g_GlobalJetpackOffsetX = x;
-        g_GlobalJetpackOffsetY = y;
-        g_GlobalJetpackOffsetZ = z;
+        EXTGAME::GlobalJetpackOffsetX = x;
+        EXTGAME::GlobalJetpackOffsetY = y;
+        EXTGAME::GlobalJetpackOffsetZ = z;
         for (new i = 0; i < MAX_PLAYERS; i++) {
-            g_PlayerJetpackOffsetX[i] = x;
-            g_PlayerJetpackOffsetY[i] = y;
-            g_PlayerJetpackOffsetZ[i] = z;
+            EXTGAME::PlayerJetpackOffsetX[i] = x;
+            EXTGAME::PlayerJetpackOffsetY[i] = y;
+            EXTGAME::PlayerJetpackOffsetZ[i] = z;
             if (IsPlayerConnected(i)) {
-                _SendJetpackOffsetPacket(i, x, y, z, g_PlayerJetpackRotAngle[i], g_PlayerJetpackRotAxisX[i], g_PlayerJetpackRotAxisY[i], g_PlayerJetpackRotAxisZ[i]);
+                _SendJetpackOffsetPacket(i, x, y, z, EXTGAME::PlayerJetpackRotAngle[i], EXTGAME::PlayerJetpackRotAxisX[i], EXTGAME::PlayerJetpackRotAxisY[i], EXTGAME::PlayerJetpackRotAxisZ[i]);
             }
         }
         return 1;
     }
 
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
-    g_PlayerJetpackOffsetX[playerid] = x;
-    g_PlayerJetpackOffsetY[playerid] = y;
-    g_PlayerJetpackOffsetZ[playerid] = z;
+    EXTGAME::PlayerJetpackOffsetX[playerid] = x;
+    EXTGAME::PlayerJetpackOffsetY[playerid] = y;
+    EXTGAME::PlayerJetpackOffsetZ[playerid] = z;
 
     if (IsPlayerConnected(playerid)) {
-        _SendJetpackOffsetPacket(playerid, x, y, z, g_PlayerJetpackRotAngle[playerid], g_PlayerJetpackRotAxisX[playerid], g_PlayerJetpackRotAxisY[playerid], g_PlayerJetpackRotAxisZ[playerid]);
+        _SendJetpackOffsetPacket(playerid, x, y, z, EXTGAME::PlayerJetpackRotAngle[playerid], EXTGAME::PlayerJetpackRotAxisX[playerid], EXTGAME::PlayerJetpackRotAxisY[playerid], EXTGAME::PlayerJetpackRotAxisZ[playerid]);
     }
     return 1;
 }
 
 stock GetPlayerJetpackOffset(playerid, &Float:x, &Float:y, &Float:z) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) {
-        x = g_GlobalJetpackOffsetX;
-        y = g_GlobalJetpackOffsetY;
-        z = g_GlobalJetpackOffsetZ;
+        x = EXTGAME::GlobalJetpackOffsetX;
+        y = EXTGAME::GlobalJetpackOffsetY;
+        z = EXTGAME::GlobalJetpackOffsetZ;
         return 0;
     }
-    x = g_PlayerJetpackOffsetX[playerid];
-    y = g_PlayerJetpackOffsetY[playerid];
-    z = g_PlayerJetpackOffsetZ[playerid];
+    x = EXTGAME::PlayerJetpackOffsetX[playerid];
+    y = EXTGAME::PlayerJetpackOffsetY[playerid];
+    z = EXTGAME::PlayerJetpackOffsetZ[playerid];
     return 1;
 }
 
@@ -1022,46 +1171,46 @@ stock GetPlayerJetpackOffset(playerid, &Float:x, &Float:y, &Float:z) {
  */
 stock SetJetpackRotationForPlayer(playerid, Float:angle, Float:axisX = 0.0, Float:axisY = 1.0, Float:axisZ = 0.0) {
     if (playerid == -1) {
-        g_GlobalJetpackRotAngle = angle;
-        g_GlobalJetpackRotAxisX = axisX;
-        g_GlobalJetpackRotAxisY = axisY;
-        g_GlobalJetpackRotAxisZ = axisZ;
+        EXTGAME::GlobalJetpackRotAngle = angle;
+        EXTGAME::GlobalJetpackRotAxisX = axisX;
+        EXTGAME::GlobalJetpackRotAxisY = axisY;
+        EXTGAME::GlobalJetpackRotAxisZ = axisZ;
         for (new i = 0; i < MAX_PLAYERS; i++) {
-            g_PlayerJetpackRotAngle[i] = angle;
-            g_PlayerJetpackRotAxisX[i] = axisX;
-            g_PlayerJetpackRotAxisY[i] = axisY;
-            g_PlayerJetpackRotAxisZ[i] = axisZ;
+            EXTGAME::PlayerJetpackRotAngle[i] = angle;
+            EXTGAME::PlayerJetpackRotAxisX[i] = axisX;
+            EXTGAME::PlayerJetpackRotAxisY[i] = axisY;
+            EXTGAME::PlayerJetpackRotAxisZ[i] = axisZ;
             if (IsPlayerConnected(i)) {
-                _SendJetpackOffsetPacket(i, g_PlayerJetpackOffsetX[i], g_PlayerJetpackOffsetY[i], g_PlayerJetpackOffsetZ[i], angle, axisX, axisY, axisZ);
+                _SendJetpackOffsetPacket(i, EXTGAME::PlayerJetpackOffsetX[i], EXTGAME::PlayerJetpackOffsetY[i], EXTGAME::PlayerJetpackOffsetZ[i], angle, axisX, axisY, axisZ);
             }
         }
         return 1;
     }
 
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
-    g_PlayerJetpackRotAngle[playerid] = angle;
-    g_PlayerJetpackRotAxisX[playerid] = axisX;
-    g_PlayerJetpackRotAxisY[playerid] = axisY;
-    g_PlayerJetpackRotAxisZ[playerid] = axisZ;
+    EXTGAME::PlayerJetpackRotAngle[playerid] = angle;
+    EXTGAME::PlayerJetpackRotAxisX[playerid] = axisX;
+    EXTGAME::PlayerJetpackRotAxisY[playerid] = axisY;
+    EXTGAME::PlayerJetpackRotAxisZ[playerid] = axisZ;
 
     if (IsPlayerConnected(playerid)) {
-        _SendJetpackOffsetPacket(playerid, g_PlayerJetpackOffsetX[playerid], g_PlayerJetpackOffsetY[playerid], g_PlayerJetpackOffsetZ[playerid], angle, axisX, axisY, axisZ);
+        _SendJetpackOffsetPacket(playerid, EXTGAME::PlayerJetpackOffsetX[playerid], EXTGAME::PlayerJetpackOffsetY[playerid], EXTGAME::PlayerJetpackOffsetZ[playerid], angle, axisX, axisY, axisZ);
     }
     return 1;
 }
 
 stock GetPlayerJetpackRotation(playerid, &Float:angle, &Float:axisX, &Float:axisY, &Float:axisZ) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) {
-        angle = g_GlobalJetpackRotAngle;
-        axisX = g_GlobalJetpackRotAxisX;
-        axisY = g_GlobalJetpackRotAxisY;
-        axisZ = g_GlobalJetpackRotAxisZ;
+        angle = EXTGAME::GlobalJetpackRotAngle;
+        axisX = EXTGAME::GlobalJetpackRotAxisX;
+        axisY = EXTGAME::GlobalJetpackRotAxisY;
+        axisZ = EXTGAME::GlobalJetpackRotAxisZ;
         return 0;
     }
-    angle = g_PlayerJetpackRotAngle[playerid];
-    axisX = g_PlayerJetpackRotAxisX[playerid];
-    axisY = g_PlayerJetpackRotAxisY[playerid];
-    axisZ = g_PlayerJetpackRotAxisZ[playerid];
+    angle = EXTGAME::PlayerJetpackRotAngle[playerid];
+    axisX = EXTGAME::PlayerJetpackRotAxisX[playerid];
+    axisY = EXTGAME::PlayerJetpackRotAxisY[playerid];
+    axisZ = EXTGAME::PlayerJetpackRotAxisZ[playerid];
     return 1;
 }
 
@@ -1070,21 +1219,21 @@ stock GetPlayerJetpackRotation(playerid, &Float:angle, &Float:axisX, &Float:axis
  */
 stock ResetJetpackOffsetForPlayer(playerid) {
     if (playerid == -1) {
-        g_GlobalJetpackOffsetX  = 0.10;
-        g_GlobalJetpackOffsetY  = -0.38;
-        g_GlobalJetpackOffsetZ  = 0.00;
-        g_GlobalJetpackRotAngle = 90.0;
-        g_GlobalJetpackRotAxisX = 0.0;
-        g_GlobalJetpackRotAxisY = 1.0;
-        g_GlobalJetpackRotAxisZ = 0.0;
+        EXTGAME::GlobalJetpackOffsetX  = 0.10;
+        EXTGAME::GlobalJetpackOffsetY  = -0.38;
+        EXTGAME::GlobalJetpackOffsetZ  = 0.00;
+        EXTGAME::GlobalJetpackRotAngle = 90.0;
+        EXTGAME::GlobalJetpackRotAxisX = 0.0;
+        EXTGAME::GlobalJetpackRotAxisY = 1.0;
+        EXTGAME::GlobalJetpackRotAxisZ = 0.0;
         for (new i = 0; i < MAX_PLAYERS; i++) {
-            g_PlayerJetpackOffsetX[i]  = 0.10;
-            g_PlayerJetpackOffsetY[i]  = -0.38;
-            g_PlayerJetpackOffsetZ[i]  = 0.00;
-            g_PlayerJetpackRotAngle[i] = 90.0;
-            g_PlayerJetpackRotAxisX[i] = 0.0;
-            g_PlayerJetpackRotAxisY[i] = 1.0;
-            g_PlayerJetpackRotAxisZ[i] = 0.0;
+            EXTGAME::PlayerJetpackOffsetX[i]  = 0.10;
+            EXTGAME::PlayerJetpackOffsetY[i]  = -0.38;
+            EXTGAME::PlayerJetpackOffsetZ[i]  = 0.00;
+            EXTGAME::PlayerJetpackRotAngle[i] = 90.0;
+            EXTGAME::PlayerJetpackRotAxisX[i] = 0.0;
+            EXTGAME::PlayerJetpackRotAxisY[i] = 1.0;
+            EXTGAME::PlayerJetpackRotAxisZ[i] = 0.0;
             if (IsPlayerConnected(i)) {
                 _SendResetJetpackOffsetPacket(i);
             }
@@ -1093,13 +1242,13 @@ stock ResetJetpackOffsetForPlayer(playerid) {
     }
 
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
-    g_PlayerJetpackOffsetX[playerid]  = 0.10;
-    g_PlayerJetpackOffsetY[playerid]  = -0.38;
-    g_PlayerJetpackOffsetZ[playerid]  = 0.00;
-    g_PlayerJetpackRotAngle[playerid] = 90.0;
-    g_PlayerJetpackRotAxisX[playerid] = 0.0;
-    g_PlayerJetpackRotAxisY[playerid] = 1.0;
-    g_PlayerJetpackRotAxisZ[playerid] = 0.0;
+    EXTGAME::PlayerJetpackOffsetX[playerid]  = 0.10;
+    EXTGAME::PlayerJetpackOffsetY[playerid]  = -0.38;
+    EXTGAME::PlayerJetpackOffsetZ[playerid]  = 0.00;
+    EXTGAME::PlayerJetpackRotAngle[playerid] = 90.0;
+    EXTGAME::PlayerJetpackRotAxisX[playerid] = 0.0;
+    EXTGAME::PlayerJetpackRotAxisY[playerid] = 1.0;
+    EXTGAME::PlayerJetpackRotAxisZ[playerid] = 0.0;
 
     if (IsPlayerConnected(playerid)) {
         _SendResetJetpackOffsetPacket(playerid);
@@ -1113,7 +1262,7 @@ stock ResetJetpackOffsetForPlayer(playerid) {
  */
 static stock _ApplyKnockedOffBike(playerid, knockState) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
-    g_PlayerKnockOffBike[playerid] = knockState;
+    EXTGAME::PlayerKnockOffBike[playerid] = knockState;
 
     if (IsPlayerConnected(playerid)) {
         new BitStream:bs = BS_New();
@@ -1139,7 +1288,7 @@ static stock _ApplyKnockedOffBike(playerid, knockState) {
 
 stock SetPlayerKnockedOffBikeState(playerid, knockState) {
     if (playerid == -1) {
-        g_GlobalKnockOffBike = knockState;
+        EXTGAME::GlobalKnockOffBike = knockState;
         for (new i = 0; i < MAX_PLAYERS; i++) {
             _ApplyKnockedOffBike(i, knockState);
         }
@@ -1150,12 +1299,12 @@ stock SetPlayerKnockedOffBikeState(playerid, knockState) {
 
 stock GetPlayerKnockedOffBikeState(playerid) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return BIKE_KNOCK_OFF_DEFAULT;
-    return g_PlayerKnockOffBike[playerid];
+    return EXTGAME::PlayerKnockOffBike[playerid];
 }
 
 static stock _ApplyFireProof(playerid, enable) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
-    g_PlayerFireProof[playerid] = (enable != 0);
+    EXTGAME::PlayerFireProof[playerid] = (enable != 0);
 
     if (IsPlayerConnected(playerid)) {
         new BitStream:bs = BS_New();
@@ -1181,7 +1330,7 @@ static stock _ApplyFireProof(playerid, enable) {
 
 stock SetPlayerFireProof(playerid, enable) {
     if (playerid == -1) {
-        g_GlobalFireProof = (enable != 0);
+        EXTGAME::GlobalFireProof = (enable != 0);
         for (new i = 0; i < MAX_PLAYERS; i++) {
             _ApplyFireProof(i, enable);
         }
@@ -1192,12 +1341,12 @@ stock SetPlayerFireProof(playerid, enable) {
 
 stock bool:IsPlayerFireProof(playerid) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
-    return g_PlayerFireProof[playerid];
+    return EXTGAME::PlayerFireProof[playerid];
 }
 
 static stock _ApplyInfiniteSprint(playerid, enable) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
-    g_PlayerInfiniteSprint[playerid] = (enable != 0);
+    EXTGAME::PlayerInfiniteSprint[playerid] = (enable != 0);
 
     if (IsPlayerConnected(playerid)) {
         new BitStream:bs = BS_New();
@@ -1215,7 +1364,7 @@ static stock _ApplyInfiniteSprint(playerid, enable) {
 
 stock TogglePlayerInfiniteSprint(playerid, enable) {
     if (playerid == -1) {
-        g_GlobalInfiniteSprint = (enable != 0);
+        EXTGAME::GlobalInfiniteSprint = (enable != 0);
         for (new i = 0; i < MAX_PLAYERS; i++) {
             _ApplyInfiniteSprint(i, enable);
         }
@@ -1226,12 +1375,12 @@ stock TogglePlayerInfiniteSprint(playerid, enable) {
 
 stock bool:IsPlayerInfiniteSprintEnabled(playerid) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
-    return g_PlayerInfiniteSprint[playerid];
+    return EXTGAME::PlayerInfiniteSprint[playerid];
 }
 
 static stock _ApplySun(playerid, enable) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
-    g_PlayerSunEnabled[playerid] = (enable != 0);
+    EXTGAME::PlayerSunEnabled[playerid] = (enable != 0);
 
     if (IsPlayerConnected(playerid)) {
         new BitStream:bs = BS_New();
@@ -1249,7 +1398,7 @@ static stock _ApplySun(playerid, enable) {
 
 stock TogglePlayerSun(playerid, enable) {
     if (playerid == -1) {
-        g_GlobalSunEnabled = (enable != 0);
+        EXTGAME::GlobalSunEnabled = (enable != 0);
         for (new i = 0; i < MAX_PLAYERS; i++) {
             _ApplySun(i, enable);
         }
@@ -1260,7 +1409,7 @@ stock TogglePlayerSun(playerid, enable) {
 
 stock bool:IsPlayerSunEnabled(playerid) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return true;
-    return g_PlayerSunEnabled[playerid];
+    return EXTGAME::PlayerSunEnabled[playerid];
 }
 
 /**
@@ -1268,7 +1417,7 @@ stock bool:IsPlayerSunEnabled(playerid) {
  */
 static stock _ApplyPlayerMoon(playerid, enable) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
-    g_PlayerMoonEnabled[playerid] = (enable != 0);
+    EXTGAME::PlayerMoonEnabled[playerid] = (enable != 0);
 
     if (IsPlayerConnected(playerid)) {
         new BitStream:bs = BS_New();
@@ -1285,7 +1434,7 @@ static stock _ApplyPlayerMoon(playerid, enable) {
 }
 
 stock ToggleMoon(enable) {
-    g_GlobalMoonEnabled = (enable != 0);
+    EXTGAME::GlobalMoonEnabled = (enable != 0);
     for (new i = 0; i < MAX_PLAYERS; i++) {
         _ApplyPlayerMoon(i, enable);
     }
@@ -1301,12 +1450,12 @@ stock TogglePlayerMoon(playerid, enable) {
 
 stock bool:IsPlayerMoonEnabled(playerid) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return true;
-    return g_PlayerMoonEnabled[playerid];
+    return EXTGAME::PlayerMoonEnabled[playerid];
 }
 
 static stock _ApplyPlayerStars(playerid, enable) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
-    g_PlayerStarsEnabled[playerid] = (enable != 0);
+    EXTGAME::PlayerStarsEnabled[playerid] = (enable != 0);
 
     if (IsPlayerConnected(playerid)) {
         new BitStream:bs = BS_New();
@@ -1323,7 +1472,7 @@ static stock _ApplyPlayerStars(playerid, enable) {
 }
 
 stock ToggleStars(enable) {
-    g_GlobalStarsEnabled = (enable != 0);
+    EXTGAME::GlobalStarsEnabled = (enable != 0);
     for (new i = 0; i < MAX_PLAYERS; i++) {
         _ApplyPlayerStars(i, enable);
     }
@@ -1339,12 +1488,12 @@ stock TogglePlayerStars(playerid, enable) {
 
 stock bool:IsPlayerStarsEnabled(playerid) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return true;
-    return g_PlayerStarsEnabled[playerid];
+    return EXTGAME::PlayerStarsEnabled[playerid];
 }
 
 static stock _ApplyPlayerLowClouds(playerid, enable) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
-    g_PlayerLowCloudsEnabled[playerid] = (enable != 0);
+    EXTGAME::PlayerLowCloudsEnabled[playerid] = (enable != 0);
 
     if (IsPlayerConnected(playerid)) {
         new BitStream:bs = BS_New();
@@ -1361,7 +1510,7 @@ static stock _ApplyPlayerLowClouds(playerid, enable) {
 }
 
 stock ToggleLowClouds(enable) {
-    g_GlobalLowCloudsEnabled = (enable != 0);
+    EXTGAME::GlobalLowCloudsEnabled = (enable != 0);
     for (new i = 0; i < MAX_PLAYERS; i++) {
         _ApplyPlayerLowClouds(i, enable);
     }
@@ -1377,12 +1526,12 @@ stock TogglePlayerLowClouds(playerid, enable) {
 
 stock bool:IsPlayerLowCloudsEnabled(playerid) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return true;
-    return g_PlayerLowCloudsEnabled[playerid];
+    return EXTGAME::PlayerLowCloudsEnabled[playerid];
 }
 
 static stock _ApplyPlayerFluffyClouds(playerid, enable) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
-    g_PlayerFluffyCloudsEnabled[playerid] = (enable != 0);
+    EXTGAME::PlayerFluffyCloudsEnabled[playerid] = (enable != 0);
 
     if (IsPlayerConnected(playerid)) {
         new BitStream:bs = BS_New();
@@ -1399,7 +1548,7 @@ static stock _ApplyPlayerFluffyClouds(playerid, enable) {
 }
 
 stock ToggleFluffyClouds(enable) {
-    g_GlobalFluffyCloudsEnabled = (enable != 0);
+    EXTGAME::GlobalFluffyCloudsEnabled = (enable != 0);
     for (new i = 0; i < MAX_PLAYERS; i++) {
         _ApplyPlayerFluffyClouds(i, enable);
     }
@@ -1415,12 +1564,12 @@ stock TogglePlayerFluffyClouds(playerid, enable) {
 
 stock bool:IsPlayerFluffyCloudsEnabled(playerid) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return true;
-    return g_PlayerFluffyCloudsEnabled[playerid];
+    return EXTGAME::PlayerFluffyCloudsEnabled[playerid];
 }
 
 static stock _ApplyPlayerRainbow(playerid, enable) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
-    g_PlayerRainbowEnabled[playerid] = (enable != 0);
+    EXTGAME::PlayerRainbowEnabled[playerid] = (enable != 0);
 
     if (IsPlayerConnected(playerid)) {
         new BitStream:bs = BS_New();
@@ -1437,7 +1586,7 @@ static stock _ApplyPlayerRainbow(playerid, enable) {
 }
 
 stock ToggleRainbow(enable) {
-    g_GlobalRainbowEnabled = (enable != 0);
+    EXTGAME::GlobalRainbowEnabled = (enable != 0);
     for (new i = 0; i < MAX_PLAYERS; i++) {
         _ApplyPlayerRainbow(i, enable);
     }
@@ -1453,7 +1602,7 @@ stock TogglePlayerRainbow(playerid, enable) {
 
 stock bool:IsPlayerRainbowEnabled(playerid) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return true;
-    return g_PlayerRainbowEnabled[playerid];
+    return EXTGAME::PlayerRainbowEnabled[playerid];
 }
 
 /**
@@ -1462,11 +1611,11 @@ stock bool:IsPlayerRainbowEnabled(playerid) {
  */
 static stock _ApplyPlayerWaterLevel(playerid, Float:level, bool:includeWorldNonSeaLevel, bool:includeWorldSeaLevel, bool:includeOutsideWorldLevel) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
-    g_PlayerWaterLevelSet[playerid] = true;
-    g_PlayerWaterLevel[playerid] = level;
-    g_PlayerWaterIncludeNonSea[playerid] = includeWorldNonSeaLevel;
-    g_PlayerWaterIncludeSea[playerid] = includeWorldSeaLevel;
-    g_PlayerWaterIncludeOutside[playerid] = includeOutsideWorldLevel;
+    EXTGAME::PlayerWaterLevelSet[playerid] = true;
+    EXTGAME::PlayerWaterLevel[playerid] = level;
+    EXTGAME::PlayerWaterIncludeNonSea[playerid] = includeWorldNonSeaLevel;
+    EXTGAME::PlayerWaterIncludeSea[playerid] = includeWorldSeaLevel;
+    EXTGAME::PlayerWaterIncludeOutside[playerid] = includeOutsideWorldLevel;
     if (IsPlayerConnected(playerid)) {
         new BitStream:bs = BS_New();
         BS_WriteValue(bs,
@@ -1485,11 +1634,11 @@ static stock _ApplyPlayerWaterLevel(playerid, Float:level, bool:includeWorldNonS
 stock SetPlayerWaterLevel(playerid, Float:level, bool:includeWorldNonSeaLevel = true, bool:includeWorldSeaLevel = true, bool:includeOutsideWorldLevel = true) {
     if (level != level) return 0;
     if (playerid == -1) {
-        g_GlobalWaterLevelSet = true;
-        g_GlobalWaterLevel = level;
-        g_GlobalWaterIncludeNonSea = includeWorldNonSeaLevel;
-        g_GlobalWaterIncludeSea = includeWorldSeaLevel;
-        g_GlobalWaterIncludeOutside = includeOutsideWorldLevel;
+        EXTGAME::GlobalWaterLevelSet = true;
+        EXTGAME::GlobalWaterLevel = level;
+        EXTGAME::GlobalWaterIncludeNonSea = includeWorldNonSeaLevel;
+        EXTGAME::GlobalWaterIncludeSea = includeWorldSeaLevel;
+        EXTGAME::GlobalWaterIncludeOutside = includeOutsideWorldLevel;
         for (new i = 0; i < MAX_PLAYERS; i++) {
             _ApplyPlayerWaterLevel(i, level, includeWorldNonSeaLevel, includeWorldSeaLevel, includeOutsideWorldLevel);
         }
@@ -1500,16 +1649,16 @@ stock SetPlayerWaterLevel(playerid, Float:level, bool:includeWorldNonSeaLevel = 
 
 stock Float:GetPlayerWaterLevel(playerid) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0.0;
-    return g_PlayerWaterLevel[playerid];
+    return EXTGAME::PlayerWaterLevel[playerid];
 }
 
 static stock _ApplyResetPlayerWaterLevel(playerid) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
-    g_PlayerWaterLevelSet[playerid] = false;
-    g_PlayerWaterLevel[playerid] = 0.0;
-    g_PlayerWaterIncludeNonSea[playerid] = true;
-    g_PlayerWaterIncludeSea[playerid] = true;
-    g_PlayerWaterIncludeOutside[playerid] = true;
+    EXTGAME::PlayerWaterLevelSet[playerid] = false;
+    EXTGAME::PlayerWaterLevel[playerid] = 0.0;
+    EXTGAME::PlayerWaterIncludeNonSea[playerid] = true;
+    EXTGAME::PlayerWaterIncludeSea[playerid] = true;
+    EXTGAME::PlayerWaterIncludeOutside[playerid] = true;
     if (IsPlayerConnected(playerid)) {
         new BitStream:bs = BS_New();
         BS_WriteValue(bs,
@@ -1525,11 +1674,11 @@ static stock _ApplyResetPlayerWaterLevel(playerid) {
 
 stock ResetPlayerWaterLevel(playerid) {
     if (playerid == -1) {
-        g_GlobalWaterLevelSet = false;
-        g_GlobalWaterLevel = 0.0;
-        g_GlobalWaterIncludeNonSea = true;
-        g_GlobalWaterIncludeSea = true;
-        g_GlobalWaterIncludeOutside = true;
+        EXTGAME::GlobalWaterLevelSet = false;
+        EXTGAME::GlobalWaterLevel = 0.0;
+        EXTGAME::GlobalWaterIncludeNonSea = true;
+        EXTGAME::GlobalWaterIncludeSea = true;
+        EXTGAME::GlobalWaterIncludeOutside = true;
         for (new i = 0; i < MAX_PLAYERS; i++) {
             _ApplyResetPlayerWaterLevel(i);
         }
@@ -1540,7 +1689,7 @@ stock ResetPlayerWaterLevel(playerid) {
 
 static stock _ApplyPlayerWaterWaveHeight(playerid, Float:height) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
-    g_PlayerWaterWaveHeight[playerid] = height;
+    EXTGAME::PlayerWaterWaveHeight[playerid] = height;
     if (IsPlayerConnected(playerid)) {
         new BitStream:bs = BS_New();
         BS_WriteValue(bs,
@@ -1558,7 +1707,7 @@ static stock _ApplyPlayerWaterWaveHeight(playerid, Float:height) {
 stock SetPlayerWaterWaveHeight(playerid, Float:height) {
     if (!(height >= -1.0 && height <= 100.0)) return 0;
     if (playerid == -1) {
-        g_GlobalWaterWaveHeight = height;
+        EXTGAME::GlobalWaterWaveHeight = height;
         for (new i = 0; i < MAX_PLAYERS; i++) {
             _ApplyPlayerWaterWaveHeight(i, height);
         }
@@ -1569,13 +1718,13 @@ stock SetPlayerWaterWaveHeight(playerid, Float:height) {
 
 stock Float:GetPlayerWaterWaveHeight(playerid) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0.0;
-    if (g_PlayerWaterWaveHeight[playerid] < 0.0) return 0.6;
-    return g_PlayerWaterWaveHeight[playerid];
+    if (EXTGAME::PlayerWaterWaveHeight[playerid] < 0.0) return 0.6;
+    return EXTGAME::PlayerWaterWaveHeight[playerid];
 }
 
 static stock _ApplyTogglePlayerHUD(playerid, hudComponents) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
-    g_PlayerHUDComponents[playerid] = hudComponents;
+    EXTGAME::PlayerHUDComponents[playerid] = hudComponents;
 
     if (IsPlayerConnected(playerid)) {
         new BitStream:bs = BS_New();
@@ -1593,7 +1742,7 @@ static stock _ApplyTogglePlayerHUD(playerid, hudComponents) {
 
 stock TogglePlayerHUDComponents(playerid, hudComponents) {
     if (playerid == -1) {
-        g_GlobalHUDComponents = hudComponents;
+        EXTGAME::GlobalHUDComponents = hudComponents;
         for (new i = 0; i < MAX_PLAYERS; i++) {
             _ApplyTogglePlayerHUD(i, hudComponents);
         }
@@ -1604,21 +1753,25 @@ stock TogglePlayerHUDComponents(playerid, hudComponents) {
 
 stock GetPlayerHUDComponents(playerid) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return HUD_COMPONENT_ALL;
-    return g_PlayerHUDComponents[playerid];
+    return EXTGAME::PlayerHUDComponents[playerid];
 }
 
 static stock _ApplyPlayerHUDColour(playerid, hudComponents, intColour) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
 
-    if (hudComponents & HUD_COMPONENT_AMMO)       g_PlayerHUDColourAmmo[playerid]       = intColour;
-    if (hudComponents & HUD_COMPONENT_WEAPONICON) g_PlayerHUDColourWeaponIcon[playerid] = intColour;
-    if (hudComponents & HUD_COMPONENT_HEALTH)     g_PlayerHUDColourHealth[playerid]     = intColour;
-    if (hudComponents & HUD_COMPONENT_OXYGEN)     g_PlayerHUDColourOxygen[playerid]     = intColour;
-    if (hudComponents & HUD_COMPONENT_ARMOUR)     g_PlayerHUDColourArmour[playerid]     = intColour;
-    if (hudComponents & HUD_COMPONENT_RADAR)      g_PlayerHUDColourRadar[playerid]      = intColour;
-    if (hudComponents & HUD_COMPONENT_CROSSHAIR)  g_PlayerHUDColourCrosshair[playerid]  = intColour;
-    if (hudComponents & HUD_COMPONENT_MONEY)      g_PlayerHUDColourMoney[playerid]      = intColour;
-    if (hudComponents & HUD_COMPONENT_LASERDOT)   g_PlayerHUDColourLaserDot[playerid]   = intColour;
+    if (hudComponents & HUD_COMPONENT_AMMO)       EXTGAME::PlayerHUDColourAmmo[playerid]       = intColour;
+    if (hudComponents & HUD_COMPONENT_WEAPONICON) EXTGAME::PlayerHUDColourWeaponIcon[playerid] = intColour;
+    if (hudComponents & HUD_COMPONENT_HEALTH)     EXTGAME::PlayerHUDColourHealth[playerid]     = intColour;
+    if (hudComponents & HUD_COMPONENT_OXYGEN)     EXTGAME::PlayerHUDColourOxygen[playerid]     = intColour;
+    if (hudComponents & HUD_COMPONENT_ARMOUR)     EXTGAME::PlayerHUDColourArmour[playerid]     = intColour;
+    if (hudComponents & HUD_COMPONENT_RADAR)      EXTGAME::PlayerHUDColourRadar[playerid]      = intColour;
+    if (hudComponents & HUD_COMPONENT_CROSSHAIR)  EXTGAME::PlayerHUDColourCrosshair[playerid]  = intColour;
+    if (hudComponents & HUD_COMPONENT_MONEY)      EXTGAME::PlayerHUDColourMoney[playerid]      = intColour;
+    if (hudComponents & HUD_COMPONENT_LASERDOT)   EXTGAME::PlayerHUDColourLaserDot[playerid]   = intColour;
+    if (hudComponents & HUD_COMPONENT_WANTED)     EXTGAME::PlayerHUDColourWanted[playerid]     = intColour;
+    if (hudComponents & HUD_COMPONENT_RADIO)      EXTGAME::PlayerHUDColourRadio[playerid]      = intColour;
+    if (hudComponents & HUD_COMPONENT_RADIO_TUNING) EXTGAME::PlayerHUDColourRadioTuning[playerid] = intColour;
+    if (hudComponents & HUD_COMPONENT_CLOCK)      EXTGAME::PlayerHUDColourClock[playerid]      = intColour;
 
     if (IsPlayerConnected(playerid)) {
         new BitStream:bs = BS_New();
@@ -1637,9 +1790,9 @@ static stock _ApplyPlayerHUDColour(playerid, hudComponents, intColour) {
 
 stock SetPlayerHUDComponentsColour(playerid, hudComponents, intColour) {
     if (playerid == -1) {
-        for (new component = 0; component < 9; component++) {
+        for (new component = 0; component < 13; component++) {
             if (hudComponents & (1 << component))
-                g_GlobalHUDColours[component] = intColour;
+                EXTGAME::GlobalHUDColours[component] = intColour;
         }
         for (new i = 0; i < MAX_PLAYERS; i++) {
             if (IsPlayerConnected(i))
@@ -1653,15 +1806,19 @@ stock SetPlayerHUDComponentsColour(playerid, hudComponents, intColour) {
 stock GetPlayerHUDComponentColour(playerid, hudComponent) {
     if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
     switch (hudComponent) {
-        case HUD_COMPONENT_AMMO:       return g_PlayerHUDColourAmmo[playerid];
-        case HUD_COMPONENT_WEAPONICON: return g_PlayerHUDColourWeaponIcon[playerid];
-        case HUD_COMPONENT_HEALTH:     return g_PlayerHUDColourHealth[playerid];
-        case HUD_COMPONENT_OXYGEN:     return g_PlayerHUDColourOxygen[playerid];
-        case HUD_COMPONENT_ARMOUR:     return g_PlayerHUDColourArmour[playerid];
-        case HUD_COMPONENT_RADAR:      return g_PlayerHUDColourRadar[playerid];
-        case HUD_COMPONENT_CROSSHAIR:  return g_PlayerHUDColourCrosshair[playerid];
-        case HUD_COMPONENT_MONEY:      return g_PlayerHUDColourMoney[playerid];
-        case HUD_COMPONENT_LASERDOT:   return g_PlayerHUDColourLaserDot[playerid];
+        case HUD_COMPONENT_AMMO:         return EXTGAME::PlayerHUDColourAmmo[playerid];
+        case HUD_COMPONENT_WEAPONICON:   return EXTGAME::PlayerHUDColourWeaponIcon[playerid];
+        case HUD_COMPONENT_HEALTH:       return EXTGAME::PlayerHUDColourHealth[playerid];
+        case HUD_COMPONENT_OXYGEN:       return EXTGAME::PlayerHUDColourOxygen[playerid];
+        case HUD_COMPONENT_ARMOUR:       return EXTGAME::PlayerHUDColourArmour[playerid];
+        case HUD_COMPONENT_RADAR:        return EXTGAME::PlayerHUDColourRadar[playerid];
+        case HUD_COMPONENT_CROSSHAIR:    return EXTGAME::PlayerHUDColourCrosshair[playerid];
+        case HUD_COMPONENT_MONEY:        return EXTGAME::PlayerHUDColourMoney[playerid];
+        case HUD_COMPONENT_LASERDOT:     return EXTGAME::PlayerHUDColourLaserDot[playerid];
+        case HUD_COMPONENT_WANTED:       return EXTGAME::PlayerHUDColourWanted[playerid];
+        case HUD_COMPONENT_RADIO:        return EXTGAME::PlayerHUDColourRadio[playerid];
+        case HUD_COMPONENT_RADIO_TUNING: return EXTGAME::PlayerHUDColourRadioTuning[playerid];
+        case HUD_COMPONENT_CLOCK:        return EXTGAME::PlayerHUDColourClock[playerid];
     }
     return 0;
 }
@@ -1702,14 +1859,14 @@ stock SetTextDrawRotationForPlayer(playerid, Text:textdrawid, Float:angle, Float
  */
 stock SetTextDrawRotation(Text:textdrawid, Float:angle, Float:pivotX = -1.0, Float:pivotY = -1.0, Float:spinSpeed = 0.0) {
     if (_:textdrawid < 0 || _:textdrawid >= MAX_TEXT_DRAWS) return 0;
-    if (!g_GlobalTextDrawRotation[_:textdrawid][tdRotEnabled]) {
-        g_ActiveTextDrawRotationsCount++;
+    if (!EXTGAME::GlobalTextDrawRotation[_:textdrawid][tdRotEnabled]) {
+        EXTGAME::ActiveTextDrawRotationsCount++;
     }
-    g_GlobalTextDrawRotation[_:textdrawid][tdRotEnabled] = true;
-    g_GlobalTextDrawRotation[_:textdrawid][tdRotAngle] = angle;
-    g_GlobalTextDrawRotation[_:textdrawid][tdRotPivotX] = pivotX;
-    g_GlobalTextDrawRotation[_:textdrawid][tdRotPivotY] = pivotY;
-    g_GlobalTextDrawRotation[_:textdrawid][tdRotSpinSpeed] = spinSpeed;
+    EXTGAME::GlobalTextDrawRotation[_:textdrawid][tdRotEnabled] = true;
+    EXTGAME::GlobalTextDrawRotation[_:textdrawid][tdRotAngle] = angle;
+    EXTGAME::GlobalTextDrawRotation[_:textdrawid][tdRotPivotX] = pivotX;
+    EXTGAME::GlobalTextDrawRotation[_:textdrawid][tdRotPivotY] = pivotY;
+    EXTGAME::GlobalTextDrawRotation[_:textdrawid][tdRotSpinSpeed] = spinSpeed;
 
     for (new i = 0; i < MAX_PLAYERS; i++) {
         if (IsPlayerConnected(i)) {
@@ -1744,14 +1901,14 @@ stock ResetTextDrawRotationForPlayer(playerid, Text:textdrawid) {
  */
 stock ResetTextDrawRotation(Text:textdrawid) {
     if (_:textdrawid < 0 || _:textdrawid >= MAX_TEXT_DRAWS) return 0;
-    if (g_GlobalTextDrawRotation[_:textdrawid][tdRotEnabled]) {
-        g_ActiveTextDrawRotationsCount--;
+    if (EXTGAME::GlobalTextDrawRotation[_:textdrawid][tdRotEnabled]) {
+        EXTGAME::ActiveTextDrawRotationsCount--;
     }
-    g_GlobalTextDrawRotation[_:textdrawid][tdRotEnabled] = false;
-    g_GlobalTextDrawRotation[_:textdrawid][tdRotAngle] = 0.0;
-    g_GlobalTextDrawRotation[_:textdrawid][tdRotPivotX] = -1.0;
-    g_GlobalTextDrawRotation[_:textdrawid][tdRotPivotY] = -1.0;
-    g_GlobalTextDrawRotation[_:textdrawid][tdRotSpinSpeed] = 0.0;
+    EXTGAME::GlobalTextDrawRotation[_:textdrawid][tdRotEnabled] = false;
+    EXTGAME::GlobalTextDrawRotation[_:textdrawid][tdRotAngle] = 0.0;
+    EXTGAME::GlobalTextDrawRotation[_:textdrawid][tdRotPivotX] = -1.0;
+    EXTGAME::GlobalTextDrawRotation[_:textdrawid][tdRotPivotY] = -1.0;
+    EXTGAME::GlobalTextDrawRotation[_:textdrawid][tdRotSpinSpeed] = 0.0;
 
     for (new i = 0; i < MAX_PLAYERS; i++) {
         if (IsPlayerConnected(i)) {
@@ -1768,11 +1925,11 @@ stock SetPlayerTextDrawRotation(playerid, PlayerText:textdrawid, Float:angle, Fl
     if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
     if (_:textdrawid < 0 || _:textdrawid >= MAX_PLAYER_TEXT_DRAWS) return 0;
 
-    g_PlayerTextDrawRotation[playerid][_:textdrawid][tdRotEnabled] = true;
-    g_PlayerTextDrawRotation[playerid][_:textdrawid][tdRotAngle] = angle;
-    g_PlayerTextDrawRotation[playerid][_:textdrawid][tdRotPivotX] = pivotX;
-    g_PlayerTextDrawRotation[playerid][_:textdrawid][tdRotPivotY] = pivotY;
-    g_PlayerTextDrawRotation[playerid][_:textdrawid][tdRotSpinSpeed] = spinSpeed;
+    EXTGAME::PlayerTextDrawRotation[playerid][_:textdrawid][tdRotEnabled] = true;
+    EXTGAME::PlayerTextDrawRotation[playerid][_:textdrawid][tdRotAngle] = angle;
+    EXTGAME::PlayerTextDrawRotation[playerid][_:textdrawid][tdRotPivotX] = pivotX;
+    EXTGAME::PlayerTextDrawRotation[playerid][_:textdrawid][tdRotPivotY] = pivotY;
+    EXTGAME::PlayerTextDrawRotation[playerid][_:textdrawid][tdRotSpinSpeed] = spinSpeed;
 
     new BitStream:bs = BS_New();
     BS_WriteValue(bs,
@@ -1798,11 +1955,11 @@ stock ResetPlayerTextDrawRotation(playerid, PlayerText:textdrawid) {
     if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
     if (_:textdrawid < 0 || _:textdrawid >= MAX_PLAYER_TEXT_DRAWS) return 0;
 
-    g_PlayerTextDrawRotation[playerid][_:textdrawid][tdRotEnabled] = false;
-    g_PlayerTextDrawRotation[playerid][_:textdrawid][tdRotAngle] = 0.0;
-    g_PlayerTextDrawRotation[playerid][_:textdrawid][tdRotPivotX] = -1.0;
-    g_PlayerTextDrawRotation[playerid][_:textdrawid][tdRotPivotY] = -1.0;
-    g_PlayerTextDrawRotation[playerid][_:textdrawid][tdRotSpinSpeed] = 0.0;
+    EXTGAME::PlayerTextDrawRotation[playerid][_:textdrawid][tdRotEnabled] = false;
+    EXTGAME::PlayerTextDrawRotation[playerid][_:textdrawid][tdRotAngle] = 0.0;
+    EXTGAME::PlayerTextDrawRotation[playerid][_:textdrawid][tdRotPivotX] = -1.0;
+    EXTGAME::PlayerTextDrawRotation[playerid][_:textdrawid][tdRotPivotY] = -1.0;
+    EXTGAME::PlayerTextDrawRotation[playerid][_:textdrawid][tdRotSpinSpeed] = 0.0;
 
     new BitStream:bs = BS_New();
     BS_WriteValue(bs,
@@ -1822,7 +1979,7 @@ stock ResetPlayerTextDrawRotation(playerid, PlayerText:textdrawid) {
  */
 stock bool:IsTextDrawRotated(Text:textdrawid) {
     if (_:textdrawid < 0 || _:textdrawid >= MAX_TEXT_DRAWS) return false;
-    return g_GlobalTextDrawRotation[_:textdrawid][tdRotEnabled];
+    return EXTGAME::GlobalTextDrawRotation[_:textdrawid][tdRotEnabled];
 }
 
 /**
@@ -1830,11 +1987,11 @@ stock bool:IsTextDrawRotated(Text:textdrawid) {
  */
 stock GetTextDrawRotation(Text:textdrawid, &Float:angle, &Float:pivotX, &Float:pivotY, &Float:spinSpeed) {
     if (_:textdrawid < 0 || _:textdrawid >= MAX_TEXT_DRAWS) return 0;
-    angle = g_GlobalTextDrawRotation[_:textdrawid][tdRotAngle];
-    pivotX = g_GlobalTextDrawRotation[_:textdrawid][tdRotPivotX];
-    pivotY = g_GlobalTextDrawRotation[_:textdrawid][tdRotPivotY];
-    spinSpeed = g_GlobalTextDrawRotation[_:textdrawid][tdRotSpinSpeed];
-    return g_GlobalTextDrawRotation[_:textdrawid][tdRotEnabled] ? 1 : 0;
+    angle = EXTGAME::GlobalTextDrawRotation[_:textdrawid][tdRotAngle];
+    pivotX = EXTGAME::GlobalTextDrawRotation[_:textdrawid][tdRotPivotX];
+    pivotY = EXTGAME::GlobalTextDrawRotation[_:textdrawid][tdRotPivotY];
+    spinSpeed = EXTGAME::GlobalTextDrawRotation[_:textdrawid][tdRotSpinSpeed];
+    return EXTGAME::GlobalTextDrawRotation[_:textdrawid][tdRotEnabled] ? 1 : 0;
 }
 
 /**
@@ -1843,7 +2000,7 @@ stock GetTextDrawRotation(Text:textdrawid, &Float:angle, &Float:pivotX, &Float:p
 stock bool:IsPlayerTextDrawRotated(playerid, PlayerText:textdrawid) {
     if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return false;
     if (_:textdrawid < 0 || _:textdrawid >= MAX_PLAYER_TEXT_DRAWS) return false;
-    return g_PlayerTextDrawRotation[playerid][_:textdrawid][tdRotEnabled];
+    return EXTGAME::PlayerTextDrawRotation[playerid][_:textdrawid][tdRotEnabled];
 }
 
 /**
@@ -1852,11 +2009,11 @@ stock bool:IsPlayerTextDrawRotated(playerid, PlayerText:textdrawid) {
 stock GetPlayerTextDrawRotation(playerid, PlayerText:textdrawid, &Float:angle, &Float:pivotX, &Float:pivotY, &Float:spinSpeed) {
     if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
     if (_:textdrawid < 0 || _:textdrawid >= MAX_PLAYER_TEXT_DRAWS) return 0;
-    angle = g_PlayerTextDrawRotation[playerid][_:textdrawid][tdRotAngle];
-    pivotX = g_PlayerTextDrawRotation[playerid][_:textdrawid][tdRotPivotX];
-    pivotY = g_PlayerTextDrawRotation[playerid][_:textdrawid][tdRotPivotY];
-    spinSpeed = g_PlayerTextDrawRotation[playerid][_:textdrawid][tdRotSpinSpeed];
-    return g_PlayerTextDrawRotation[playerid][_:textdrawid][tdRotEnabled] ? 1 : 0;
+    angle = EXTGAME::PlayerTextDrawRotation[playerid][_:textdrawid][tdRotAngle];
+    pivotX = EXTGAME::PlayerTextDrawRotation[playerid][_:textdrawid][tdRotPivotX];
+    pivotY = EXTGAME::PlayerTextDrawRotation[playerid][_:textdrawid][tdRotPivotY];
+    spinSpeed = EXTGAME::PlayerTextDrawRotation[playerid][_:textdrawid][tdRotSpinSpeed];
+    return EXTGAME::PlayerTextDrawRotation[playerid][_:textdrawid][tdRotEnabled] ? 1 : 0;
 }
 
 /*
@@ -1897,21 +2054,21 @@ stock CreateWaterZoneForPlayer(playerid, zoneid, Float:minX, Float:minY, Float:m
 stock CreateWaterZone(Float:minX, Float:minY, Float:maxX, Float:maxY, Float:level, Float:bottomZ = -100.0) {
     new zoneid = INVALID_WATER_ZONE;
     for (new i = 0; i < MAX_WATER_ZONES; i++) {
-        if (!g_GlobalWaterZones[i][wzActive]) {
+        if (!EXTGAME::GlobalWaterZones[i][wzActive]) {
             zoneid = i;
             break;
         }
     }
     if (zoneid == INVALID_WATER_ZONE) return INVALID_WATER_ZONE;
 
-    g_ActiveWaterZonesCount++;
-    g_GlobalWaterZones[zoneid][wzActive] = true;
-    g_GlobalWaterZones[zoneid][wzMinX] = (minX < maxX) ? minX : maxX;
-    g_GlobalWaterZones[zoneid][wzMaxX] = (minX > maxX) ? minX : maxX;
-    g_GlobalWaterZones[zoneid][wzMinY] = (minY < maxY) ? minY : maxY;
-    g_GlobalWaterZones[zoneid][wzMaxY] = (minY > maxY) ? minY : maxY;
-    g_GlobalWaterZones[zoneid][wzLevel] = level;
-    g_GlobalWaterZones[zoneid][wzBottomZ] = (bottomZ < level) ? bottomZ : (level - 5.0);
+    EXTGAME::ActiveWaterZonesCount++;
+    EXTGAME::GlobalWaterZones[zoneid][wzActive] = true;
+    EXTGAME::GlobalWaterZones[zoneid][wzMinX] = (minX < maxX) ? minX : maxX;
+    EXTGAME::GlobalWaterZones[zoneid][wzMaxX] = (minX > maxX) ? minX : maxX;
+    EXTGAME::GlobalWaterZones[zoneid][wzMinY] = (minY < maxY) ? minY : maxY;
+    EXTGAME::GlobalWaterZones[zoneid][wzMaxY] = (minY > maxY) ? minY : maxY;
+    EXTGAME::GlobalWaterZones[zoneid][wzLevel] = level;
+    EXTGAME::GlobalWaterZones[zoneid][wzBottomZ] = (bottomZ < level) ? bottomZ : (level - 5.0);
 
     for (new i = 0; i < MAX_PLAYERS; i++) {
         if (IsPlayerConnected(i)) {
@@ -1945,8 +2102,8 @@ stock SetWaterZoneLevelForPlayer(playerid, zoneid, Float:level) {
  * Changes the level of a global custom water zone for all players.
  */
 stock SetWaterZoneLevel(zoneid, Float:level) {
-    if (zoneid < 0 || zoneid >= MAX_WATER_ZONES || !g_GlobalWaterZones[zoneid][wzActive]) return 0;
-    g_GlobalWaterZones[zoneid][wzLevel] = level;
+    if (zoneid < 0 || zoneid >= MAX_WATER_ZONES || !EXTGAME::GlobalWaterZones[zoneid][wzActive]) return 0;
+    EXTGAME::GlobalWaterZones[zoneid][wzLevel] = level;
     for (new i = 0; i < MAX_PLAYERS; i++) {
         if (IsPlayerConnected(i)) {
             SetWaterZoneLevelForPlayer(i, zoneid, level);
@@ -1984,13 +2141,13 @@ stock SetWaterZoneCoordsForPlayer(playerid, zoneid, Float:minX, Float:minY, Floa
  * Resizes / moves a global custom water zone for all players.
  */
 stock SetWaterZoneCoords(zoneid, Float:minX, Float:minY, Float:maxX, Float:maxY, Float:level, Float:bottomZ = -100.0) {
-    if (zoneid < 0 || zoneid >= MAX_WATER_ZONES || !g_GlobalWaterZones[zoneid][wzActive]) return 0;
-    g_GlobalWaterZones[zoneid][wzMinX] = (minX < maxX) ? minX : maxX;
-    g_GlobalWaterZones[zoneid][wzMaxX] = (minX > maxX) ? minX : maxX;
-    g_GlobalWaterZones[zoneid][wzMinY] = (minY < maxY) ? minY : maxY;
-    g_GlobalWaterZones[zoneid][wzMaxY] = (minY > maxY) ? minY : maxY;
-    g_GlobalWaterZones[zoneid][wzLevel] = level;
-    g_GlobalWaterZones[zoneid][wzBottomZ] = (bottomZ < level) ? bottomZ : (level - 5.0);
+    if (zoneid < 0 || zoneid >= MAX_WATER_ZONES || !EXTGAME::GlobalWaterZones[zoneid][wzActive]) return 0;
+    EXTGAME::GlobalWaterZones[zoneid][wzMinX] = (minX < maxX) ? minX : maxX;
+    EXTGAME::GlobalWaterZones[zoneid][wzMaxX] = (minX > maxX) ? minX : maxX;
+    EXTGAME::GlobalWaterZones[zoneid][wzMinY] = (minY < maxY) ? minY : maxY;
+    EXTGAME::GlobalWaterZones[zoneid][wzMaxY] = (minY > maxY) ? minY : maxY;
+    EXTGAME::GlobalWaterZones[zoneid][wzLevel] = level;
+    EXTGAME::GlobalWaterZones[zoneid][wzBottomZ] = (bottomZ < level) ? bottomZ : (level - 5.0);
 
     for (new i = 0; i < MAX_PLAYERS; i++) {
         if (IsPlayerConnected(i)) {
@@ -2023,15 +2180,15 @@ stock DestroyWaterZoneForPlayer(playerid, zoneid) {
  * Destroys a global custom water zone for all players.
  */
 stock DestroyWaterZone(zoneid) {
-    if (zoneid < 0 || zoneid >= MAX_WATER_ZONES || !g_GlobalWaterZones[zoneid][wzActive]) return 0;
-    g_ActiveWaterZonesCount--;
-    g_GlobalWaterZones[zoneid][wzActive] = false;
-    g_GlobalWaterZones[zoneid][wzMinX] = 0.0;
-    g_GlobalWaterZones[zoneid][wzMinY] = 0.0;
-    g_GlobalWaterZones[zoneid][wzMaxX] = 0.0;
-    g_GlobalWaterZones[zoneid][wzMaxY] = 0.0;
-    g_GlobalWaterZones[zoneid][wzLevel] = 0.0;
-    g_GlobalWaterZones[zoneid][wzBottomZ] = -100.0;
+    if (zoneid < 0 || zoneid >= MAX_WATER_ZONES || !EXTGAME::GlobalWaterZones[zoneid][wzActive]) return 0;
+    EXTGAME::ActiveWaterZonesCount--;
+    EXTGAME::GlobalWaterZones[zoneid][wzActive] = false;
+    EXTGAME::GlobalWaterZones[zoneid][wzMinX] = 0.0;
+    EXTGAME::GlobalWaterZones[zoneid][wzMinY] = 0.0;
+    EXTGAME::GlobalWaterZones[zoneid][wzMaxX] = 0.0;
+    EXTGAME::GlobalWaterZones[zoneid][wzMaxY] = 0.0;
+    EXTGAME::GlobalWaterZones[zoneid][wzLevel] = 0.0;
+    EXTGAME::GlobalWaterZones[zoneid][wzBottomZ] = -100.0;
 
     for (new i = 0; i < MAX_PLAYERS; i++) {
         if (IsPlayerConnected(i)) {
@@ -2046,15 +2203,15 @@ stock DestroyWaterZone(zoneid) {
  */
 stock bool:IsValidWaterZone(zoneid) {
     if (zoneid < 0 || zoneid >= MAX_WATER_ZONES) return false;
-    return g_GlobalWaterZones[zoneid][wzActive];
+    return EXTGAME::GlobalWaterZones[zoneid][wzActive];
 }
 
 /**
  * Gets the water level of a custom water zone.
  */
 stock GetWaterZoneLevel(zoneid, &Float:level) {
-    if (zoneid < 0 || zoneid >= MAX_WATER_ZONES || !g_GlobalWaterZones[zoneid][wzActive]) return 0;
-    level = g_GlobalWaterZones[zoneid][wzLevel];
+    if (zoneid < 0 || zoneid >= MAX_WATER_ZONES || !EXTGAME::GlobalWaterZones[zoneid][wzActive]) return 0;
+    level = EXTGAME::GlobalWaterZones[zoneid][wzLevel];
     return 1;
 }
 
@@ -2062,14 +2219,506 @@ stock GetWaterZoneLevel(zoneid, &Float:level) {
  * Gets the coordinates and bounds of a custom water zone.
  */
 stock GetWaterZoneCoords(zoneid, &Float:minX, &Float:minY, &Float:maxX, &Float:maxY, &Float:level, &Float:bottomZ) {
-    if (zoneid < 0 || zoneid >= MAX_WATER_ZONES || !g_GlobalWaterZones[zoneid][wzActive]) return 0;
-    minX = g_GlobalWaterZones[zoneid][wzMinX];
-    minY = g_GlobalWaterZones[zoneid][wzMinY];
-    maxX = g_GlobalWaterZones[zoneid][wzMaxX];
-    maxY = g_GlobalWaterZones[zoneid][wzMaxY];
-    level = g_GlobalWaterZones[zoneid][wzLevel];
-    bottomZ = g_GlobalWaterZones[zoneid][wzBottomZ];
+    if (zoneid < 0 || zoneid >= MAX_WATER_ZONES || !EXTGAME::GlobalWaterZones[zoneid][wzActive]) return 0;
+    minX = EXTGAME::GlobalWaterZones[zoneid][wzMinX];
+    minY = EXTGAME::GlobalWaterZones[zoneid][wzMinY];
+    maxX = EXTGAME::GlobalWaterZones[zoneid][wzMaxX];
+    maxY = EXTGAME::GlobalWaterZones[zoneid][wzMaxY];
+    level = EXTGAME::GlobalWaterZones[zoneid][wzLevel];
+    bottomZ = EXTGAME::GlobalWaterZones[zoneid][wzBottomZ];
     return 1;
+}
+
+/*
+ * =============================================================================
+ * Vision Controls
+ * =============================================================================
+ */
+stock ToggleNightVision(playerid, bool:toggle) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    EXTGAME::PlayerNightVision[playerid] = toggle;
+    new BitStream:bs = BS_New();
+    BS_WriteValue(bs,
+        PR_UINT8, EXTENDEDGAME_PACKET_ID,
+        PR_UINT16, playerid,
+        PR_UINT8, EXTENDEDGAME_ACTION_TOGGLE_NIGHT_VISION,
+        PR_UINT8, toggle ? 1 : 0
+    );
+    PR_SendPacket(bs, playerid, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    BS_Delete(bs);
+    return 1;
+}
+
+stock ToggleNightVisionForAll(bool:toggle) {
+    EXTGAME::GlobalNightVision = toggle;
+    for (new i = 0; i < MAX_PLAYERS; i++) {
+        if (IsPlayerConnected(i)) ToggleNightVision(i, toggle);
+    }
+    return 1;
+}
+
+stock bool:GetPlayerNightVision(playerid) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    return EXTGAME::PlayerNightVision[playerid];
+}
+
+stock ToggleThermalVision(playerid, bool:toggle) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    EXTGAME::PlayerThermalVision[playerid] = toggle;
+    new BitStream:bs = BS_New();
+    BS_WriteValue(bs,
+        PR_UINT8, EXTENDEDGAME_PACKET_ID,
+        PR_UINT16, playerid,
+        PR_UINT8, EXTENDEDGAME_ACTION_TOGGLE_THERMAL_VISION,
+        PR_UINT8, toggle ? 1 : 0
+    );
+    PR_SendPacket(bs, playerid, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    BS_Delete(bs);
+    return 1;
+}
+
+stock ToggleThermalVisionForAll(bool:toggle) {
+    EXTGAME::GlobalThermalVision = toggle;
+    for (new i = 0; i < MAX_PLAYERS; i++) {
+        if (IsPlayerConnected(i)) ToggleThermalVision(i, toggle);
+    }
+    return 1;
+}
+
+stock bool:GetPlayerThermalVision(playerid) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    return EXTGAME::PlayerThermalVision[playerid];
+}
+
+/*
+ * =============================================================================
+ * Weapon Reload Mechanics
+ * =============================================================================
+ */
+stock SetPlayerNoReload(playerid, bool:toggle) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    EXTGAME::PlayerNoReload[playerid] = toggle;
+    new BitStream:bs = BS_New();
+    BS_WriteValue(bs,
+        PR_UINT8, EXTENDEDGAME_PACKET_ID,
+        PR_UINT16, playerid,
+        PR_UINT8, EXTENDEDGAME_ACTION_SET_NO_RELOAD,
+        PR_UINT8, toggle ? 1 : 0
+    );
+    PR_SendPacket(bs, playerid, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    BS_Delete(bs);
+    return 1;
+}
+
+stock SetPlayerNoReloadForAll(bool:toggle) {
+    EXTGAME::GlobalNoReload = toggle;
+    for (new i = 0; i < MAX_PLAYERS; i++) {
+        if (IsPlayerConnected(i)) SetPlayerNoReload(i, toggle);
+    }
+    return 1;
+}
+
+stock bool:GetPlayerNoReload(playerid) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    return EXTGAME::PlayerNoReload[playerid];
+}
+
+stock TogglePlayerSwitchReload(playerid, bool:toggle) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    EXTGAME::PlayerSwitchReload[playerid] = toggle;
+    new BitStream:bs = BS_New();
+    BS_WriteValue(bs,
+        PR_UINT8, EXTENDEDGAME_PACKET_ID,
+        PR_UINT16, playerid,
+        PR_UINT8, EXTENDEDGAME_ACTION_TOGGLE_SWITCH_RELOAD,
+        PR_UINT8, toggle ? 1 : 0
+    );
+    PR_SendPacket(bs, playerid, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    BS_Delete(bs);
+    return 1;
+}
+
+stock TogglePlayerSwitchReloadForAll(bool:toggle) {
+    EXTGAME::GlobalSwitchReload = toggle;
+    for (new i = 0; i < MAX_PLAYERS; i++) {
+        if (IsPlayerConnected(i)) TogglePlayerSwitchReload(i, toggle);
+    }
+    return 1;
+}
+
+stock bool:GetPlayerSwitchReload(playerid) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    return EXTGAME::PlayerSwitchReload[playerid];
+}
+
+stock ToggleQuickReloadForPlayer(playerid, bool:toggle) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    EXTGAME::PlayerQuickReload[playerid] = toggle;
+    new BitStream:bs = BS_New();
+    BS_WriteValue(bs,
+        PR_UINT8, EXTENDEDGAME_PACKET_ID,
+        PR_UINT16, playerid,
+        PR_UINT8, EXTENDEDGAME_ACTION_TOGGLE_QUICK_RELOAD,
+        PR_UINT8, toggle ? 1 : 0
+    );
+    PR_SendPacket(bs, playerid, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    BS_Delete(bs);
+    return 1;
+}
+
+stock ToggleQuickReloadForAll(bool:toggle) {
+    EXTGAME::GlobalQuickReload = toggle;
+    for (new i = 0; i < MAX_PLAYERS; i++) {
+        if (IsPlayerConnected(i)) ToggleQuickReloadForPlayer(i, toggle);
+    }
+    return 1;
+}
+
+stock bool:GetPlayerQuickReload(playerid) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    return EXTGAME::PlayerQuickReload[playerid];
+}
+
+/*
+ * =============================================================================
+ * Physics & Movement Controls
+ * =============================================================================
+ */
+stock TogglePlayerInfiniteOxygen(playerid, bool:toggle) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    EXTGAME::PlayerInfiniteOxygen[playerid] = toggle;
+    new BitStream:bs = BS_New();
+    BS_WriteValue(bs,
+        PR_UINT8, EXTENDEDGAME_PACKET_ID,
+        PR_UINT16, playerid,
+        PR_UINT8, EXTENDEDGAME_ACTION_TOGGLE_INFINITE_OXYGEN,
+        PR_UINT8, toggle ? 1 : 0
+    );
+    PR_SendPacket(bs, playerid, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    BS_Delete(bs);
+    return 1;
+}
+
+stock TogglePlayerInfiniteOxygenForAll(bool:toggle) {
+    EXTGAME::GlobalInfiniteOxygen = toggle;
+    for (new i = 0; i < MAX_PLAYERS; i++) {
+        if (IsPlayerConnected(i)) TogglePlayerInfiniteOxygen(i, toggle);
+    }
+    return 1;
+}
+
+stock bool:GetPlayerInfiniteOxygen(playerid) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    return EXTGAME::PlayerInfiniteOxygen[playerid];
+}
+
+static stock _SendPlayerPedAnimsPacket(recipient, targetid, mode) {
+    new BitStream:bs = BS_New();
+    BS_WriteValue(bs,
+        PR_UINT8, EXTENDEDGAME_PACKET_ID,
+        PR_UINT16, recipient,
+        PR_UINT8, EXTENDEDGAME_ACTION_SET_PLAYER_PED_ANIMS,
+        PR_UINT16, targetid,
+        PR_UINT8, mode
+    );
+    PR_SendPacket(bs, recipient, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    BS_Delete(bs);
+}
+
+stock SetPlayerPedAnims(playerid, bool:toggle) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    new mode = toggle ? 1 : 2;
+    EXTGAME::PlayerPedAnims[playerid] = mode;
+    for (new i = 0; i < MAX_PLAYERS; i++) {
+        if (IsPlayerConnected(i)) {
+            _SendPlayerPedAnimsPacket(i, playerid, mode);
+        }
+    }
+    return 1;
+}
+
+stock GetPlayerPedAnims(playerid) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    return EXTGAME::PlayerPedAnims[playerid];
+}
+
+stock TogglePlayerCursor(playerid, bool:toggle) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    EXTGAME::PlayerCursor[playerid] = toggle;
+    new BitStream:bs = BS_New();
+    BS_WriteValue(bs,
+        PR_UINT8, EXTENDEDGAME_PACKET_ID,
+        PR_UINT16, playerid,
+        PR_UINT8, EXTENDEDGAME_ACTION_TOGGLE_CURSOR,
+        PR_UINT8, toggle ? 1 : 0
+    );
+    PR_SendPacket(bs, playerid, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    BS_Delete(bs);
+    return 1;
+}
+
+stock bool:GetCursorState(playerid) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    return EXTGAME::PlayerCursor[playerid];
+}
+
+/*
+ * =============================================================================
+ * Plane Radar Altimeter Color (Hexadecimal RGBA)
+ * =============================================================================
+ */
+stock SetPlaneRadarColor(playerid, color, g = -1, b = -1, a = -1) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    new hexColor = color;
+    if (g != -1 && b != -1 && a != -1) {
+        hexColor = ((color & 0xFF) << 24) | ((g & 0xFF) << 16) | ((b & 0xFF) << 8) | (a & 0xFF);
+    }
+    EXTGAME::PlayerPlaneRadarColor[playerid] = hexColor;
+    new BitStream:bs = BS_New();
+    BS_WriteValue(bs,
+        PR_UINT8, EXTENDEDGAME_PACKET_ID,
+        PR_UINT16, playerid,
+        PR_UINT8, EXTENDEDGAME_ACTION_SET_PLANE_RADAR_COLOR,
+        PR_UINT32, hexColor
+    );
+    PR_SendPacket(bs, playerid, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    BS_Delete(bs);
+    return 1;
+}
+
+stock SetPlaneRadarColorForAll(color, g = -1, b = -1, a = -1) {
+    new hexColor = color;
+    if (g != -1 && b != -1 && a != -1) {
+        hexColor = ((color & 0xFF) << 24) | ((g & 0xFF) << 16) | ((b & 0xFF) << 8) | (a & 0xFF);
+    }
+    EXTGAME::GlobalPlaneRadarColor = hexColor;
+    for (new i = 0; i < MAX_PLAYERS; i++) {
+        if (IsPlayerConnected(i)) SetPlaneRadarColor(i, hexColor);
+    }
+    return 1;
+}
+
+stock GetPlaneRadarColor(playerid) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0xFFFFFFFF;
+    return EXTGAME::PlayerPlaneRadarColor[playerid];
+}
+
+/*
+ * =============================================================================
+ * Sun Color Controls (Hexadecimal RGBA)
+ * =============================================================================
+ */
+stock SetPlayerSunColor(playerid, coreColor, coronaColor = -1) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (coronaColor == -1) coronaColor = coreColor;
+    EXTGAME::PlayerSunColorSet[playerid] = true;
+    EXTGAME::PlayerSunCoreColor[playerid] = coreColor;
+    EXTGAME::PlayerSunCoronaColor[playerid] = coronaColor;
+    new BitStream:bs = BS_New();
+    BS_WriteValue(bs,
+        PR_UINT8, EXTENDEDGAME_PACKET_ID,
+        PR_UINT16, playerid,
+        PR_UINT8, EXTENDEDGAME_ACTION_SET_SUN_COLOR,
+        PR_UINT32, coreColor,
+        PR_UINT32, coronaColor
+    );
+    PR_SendPacket(bs, playerid, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    BS_Delete(bs);
+    return 1;
+}
+
+stock SetSunColorForAll(coreColor, coronaColor = -1) {
+    if (coronaColor == -1) coronaColor = coreColor;
+    EXTGAME::GlobalSunColorSet = true;
+    EXTGAME::GlobalSunCoreColor = coreColor;
+    EXTGAME::GlobalSunCoronaColor = coronaColor;
+    for (new i = 0; i < MAX_PLAYERS; i++) {
+        if (IsPlayerConnected(i)) SetPlayerSunColor(i, coreColor, coronaColor);
+    }
+    return 1;
+}
+
+stock ResetPlayerSunColor(playerid) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    EXTGAME::PlayerSunColorSet[playerid] = false;
+    EXTGAME::PlayerSunCoreColor[playerid] = 0xFFFFFFFF;
+    EXTGAME::PlayerSunCoronaColor[playerid] = 0xFFFFFFFF;
+    new BitStream:bs = BS_New();
+    BS_WriteValue(bs,
+        PR_UINT8, EXTENDEDGAME_PACKET_ID,
+        PR_UINT16, playerid,
+        PR_UINT8, EXTENDEDGAME_ACTION_RESET_SUN_COLOR
+    );
+    PR_SendPacket(bs, playerid, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    BS_Delete(bs);
+    return 1;
+}
+
+stock ResetSunColorForAll() {
+    EXTGAME::GlobalSunColorSet = false;
+    EXTGAME::GlobalSunCoreColor = 0xFFFFFFFF;
+    EXTGAME::GlobalSunCoronaColor = 0xFFFFFFFF;
+    for (new i = 0; i < MAX_PLAYERS; i++) {
+        if (IsPlayerConnected(i)) ResetPlayerSunColor(i);
+    }
+    return 1;
+}
+
+stock bool:GetPlayerSunColor(playerid, &coreColor, &coronaColor) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    coreColor = EXTGAME::PlayerSunCoreColor[playerid];
+    coronaColor = EXTGAME::PlayerSunCoronaColor[playerid];
+    return EXTGAME::PlayerSunColorSet[playerid];
+}
+
+/*
+ * =============================================================================
+ * Moon Color Controls (Hexadecimal RGBA)
+ * =============================================================================
+ */
+stock SetPlayerMoonColor(playerid, color) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    EXTGAME::PlayerMoonColorSet[playerid] = true;
+    EXTGAME::PlayerMoonColor[playerid] = color;
+    new BitStream:bs = BS_New();
+    BS_WriteValue(bs,
+        PR_UINT8, EXTENDEDGAME_PACKET_ID,
+        PR_UINT16, playerid,
+        PR_UINT8, EXTENDEDGAME_ACTION_SET_MOON_COLOR,
+        PR_UINT32, color
+    );
+    PR_SendPacket(bs, playerid, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    BS_Delete(bs);
+    return 1;
+}
+
+stock SetMoonColorForAll(color) {
+    EXTGAME::GlobalMoonColorSet = true;
+    EXTGAME::GlobalMoonColor = color;
+    for (new i = 0; i < MAX_PLAYERS; i++) {
+        if (IsPlayerConnected(i)) SetPlayerMoonColor(i, color);
+    }
+    return 1;
+}
+
+stock ResetPlayerMoonColor(playerid) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    EXTGAME::PlayerMoonColorSet[playerid] = false;
+    EXTGAME::PlayerMoonColor[playerid] = 0xFFFFFFFF;
+    new BitStream:bs = BS_New();
+    BS_WriteValue(bs,
+        PR_UINT8, EXTENDEDGAME_PACKET_ID,
+        PR_UINT16, playerid,
+        PR_UINT8, EXTENDEDGAME_ACTION_RESET_MOON_COLOR
+    );
+    PR_SendPacket(bs, playerid, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    BS_Delete(bs);
+    return 1;
+}
+
+stock ResetMoonColorForAll() {
+    EXTGAME::GlobalMoonColorSet = false;
+    EXTGAME::GlobalMoonColor = 0xFFFFFFFF;
+    for (new i = 0; i < MAX_PLAYERS; i++) {
+        if (IsPlayerConnected(i)) ResetPlayerMoonColor(i);
+    }
+    return 1;
+}
+
+stock bool:GetPlayerMoonColor(playerid, &color) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    color = EXTGAME::PlayerMoonColor[playerid];
+    return EXTGAME::PlayerMoonColorSet[playerid];
+}
+
+/*
+ * =============================================================================
+ * Vehicle Blur Motion Controls
+ * =============================================================================
+ */
+stock TogglePlayerVehicleBlur(playerid, bool:toggle, intensity = 36) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    EXTGAME::PlayerVehicleBlur[playerid] = toggle;
+    EXTGAME::PlayerVehicleBlurIntensity[playerid] = intensity;
+    new BitStream:bs = BS_New();
+    BS_WriteValue(bs,
+        PR_UINT8, EXTENDEDGAME_PACKET_ID,
+        PR_UINT16, playerid,
+        PR_UINT8, EXTENDEDGAME_ACTION_TOGGLE_VEHICLE_BLUR,
+        PR_UINT8, toggle ? 1 : 0,
+        PR_UINT8, intensity
+    );
+    PR_SendPacket(bs, playerid, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    BS_Delete(bs);
+    return 1;
+}
+
+stock ToggleVehicleBlurForAll(bool:toggle, intensity = 36) {
+    EXTGAME::GlobalVehicleBlur = toggle;
+    EXTGAME::GlobalVehicleBlurIntensity = intensity;
+    for (new i = 0; i < MAX_PLAYERS; i++) {
+        if (IsPlayerConnected(i)) TogglePlayerVehicleBlur(i, toggle, intensity);
+    }
+    return 1;
+}
+
+stock bool:GetPlayerVehicleBlur(playerid, &intensity = 0) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    intensity = EXTGAME::PlayerVehicleBlurIntensity[playerid];
+    return EXTGAME::PlayerVehicleBlur[playerid];
+}
+
+/*
+ * =============================================================================
+ * Pause Menu Tracking
+ * =============================================================================
+ */
+forward OnPlayerOpenPauseMenu(playerid);
+forward OnPlayerClosePauseMenu(playerid);
+forward OnPlayerEnterPauseSubmenu(playerid, from, to);
+
+stock bool:IsPlayerInPauseMenu(playerid) {
+    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    return EXTGAME::PlayerInPauseMenu[playerid];
+}
+
+/*
+ * =============================================================================
+ * ASCM-Compatible HUD Colour Functions
+ * =============================================================================
+ */
+stock SetPlayerHUDComponentColor(playerid, componentid, colour) {
+    new hudComp = 0;
+    switch (componentid) {
+        case HUD_COLOUR_MONEY:          hudComp = HUD_COMPONENT_MONEY;
+        case HUD_COLOUR_ARMOUR:         hudComp = HUD_COMPONENT_ARMOUR;
+        case HUD_COLOUR_HEALTH:         hudComp = HUD_COMPONENT_HEALTH;
+        case HUD_COLOUR_BREATH:         hudComp = HUD_COMPONENT_OXYGEN;
+        case HUD_COLOUR_AMMO:           hudComp = HUD_COMPONENT_AMMO;
+        case HUD_COLOUR_WANTED:         hudComp = HUD_COMPONENT_WANTED;
+        case HUD_COLOUR_RADIO:          hudComp = HUD_COMPONENT_RADIO;
+        case HUD_COLOUR_RADIO_TUNING:   hudComp = HUD_COMPONENT_RADIO_TUNING;
+        case HUD_COLOUR_CLOCK:          hudComp = HUD_COMPONENT_CLOCK;
+        default: return 0;
+    }
+    return SetPlayerHUDComponentsColour(playerid, hudComp, colour);
+}
+
+stock GetPlayerHUDComponentColor(playerid, componentid) {
+    new hudComp = 0;
+    switch (componentid) {
+        case HUD_COLOUR_MONEY:          hudComp = HUD_COMPONENT_MONEY;
+        case HUD_COLOUR_ARMOUR:         hudComp = HUD_COMPONENT_ARMOUR;
+        case HUD_COLOUR_HEALTH:         hudComp = HUD_COMPONENT_HEALTH;
+        case HUD_COLOUR_BREATH:         hudComp = HUD_COMPONENT_OXYGEN;
+        case HUD_COLOUR_AMMO:           hudComp = HUD_COMPONENT_AMMO;
+        case HUD_COLOUR_WANTED:         hudComp = HUD_COMPONENT_WANTED;
+        case HUD_COLOUR_RADIO:          hudComp = HUD_COMPONENT_RADIO;
+        case HUD_COLOUR_RADIO_TUNING:   hudComp = HUD_COMPONENT_RADIO_TUNING;
+        case HUD_COLOUR_CLOCK:          hudComp = HUD_COMPONENT_CLOCK;
+        default: return 0;
+    }
+    return GetPlayerHUDComponentColour(playerid, hudComp);
 }
 
 /*
@@ -2102,7 +2751,7 @@ public OnPlayerStreamIn(playerid, forplayerid) {
 
 // 2. Hook OnPlayerSpawn: Auto-sync when playerid spawns with Model 0
 public OnPlayerSpawn(playerid) {
-    if (!g_PlayerHasPlugin[playerid]) {
+    if (!EXTGAME::PlayerHasPlugin[playerid]) {
         // Re-ping in case client was slow to load or connect
         CheckPlayerExtendedGame(playerid, 0);
     } else {
@@ -2121,7 +2770,7 @@ public OnPlayerSpawn(playerid) {
     }
 
     if (GetPlayerSkin(playerid) == 0) {
-        if (g_PlayerCJActive[playerid]) {
+        if (EXTGAME::PlayerCJActive[playerid]) {
             SyncPlayerCJ(playerid);
         } else {
             // Apply singleplayer default clothes
@@ -2147,54 +2796,76 @@ public OnPlayerSpawn(playerid) {
 // 3. Hook OnPlayerDisconnect: Purge server state & notify clients
 public OnPlayerDisconnect(playerid, reason) {
     ResetPlayerCJData(playerid);
-    g_PlayerHasPlugin[playerid] = false;
-    g_PlayerPluginVersion[playerid] = 0;
-    g_PlayerPluginChecked[playerid] = false;
+    EXTGAME::PlayerHasPlugin[playerid] = false;
+    EXTGAME::PlayerPluginVersion[playerid] = 0;
+    EXTGAME::PlayerPluginChecked[playerid] = false;
 
-    g_PlayerAircraftHeightLimit[playerid] = g_GlobalAircraftHeightLimit;
-    g_PlayerJetpackHeightLimit[playerid]  = g_GlobalJetpackHeightLimit;
-    g_PlayerJetpackOffsetX[playerid]      = g_GlobalJetpackOffsetX;
-    g_PlayerJetpackOffsetY[playerid]      = g_GlobalJetpackOffsetY;
-    g_PlayerJetpackOffsetZ[playerid]      = g_GlobalJetpackOffsetZ;
-    g_PlayerJetpackRotAngle[playerid]     = g_GlobalJetpackRotAngle;
-    g_PlayerJetpackRotAxisX[playerid]     = g_GlobalJetpackRotAxisX;
-    g_PlayerJetpackRotAxisY[playerid]     = g_GlobalJetpackRotAxisY;
-    g_PlayerJetpackRotAxisZ[playerid]     = g_GlobalJetpackRotAxisZ;
-    g_PlayerKnockOffBike[playerid]        = g_GlobalKnockOffBike;
-    g_PlayerFireProof[playerid]           = g_GlobalFireProof;
-    g_PlayerInfiniteSprint[playerid]      = g_GlobalInfiniteSprint;
-    g_PlayerSunEnabled[playerid]          = g_GlobalSunEnabled;
+    EXTGAME::PlayerAircraftHeightLimit[playerid] = EXTGAME::GlobalAircraftHeightLimit;
+    EXTGAME::PlayerJetpackHeightLimit[playerid]  = EXTGAME::GlobalJetpackHeightLimit;
+    EXTGAME::PlayerJetpackOffsetX[playerid]      = EXTGAME::GlobalJetpackOffsetX;
+    EXTGAME::PlayerJetpackOffsetY[playerid]      = EXTGAME::GlobalJetpackOffsetY;
+    EXTGAME::PlayerJetpackOffsetZ[playerid]      = EXTGAME::GlobalJetpackOffsetZ;
+    EXTGAME::PlayerJetpackRotAngle[playerid]     = EXTGAME::GlobalJetpackRotAngle;
+    EXTGAME::PlayerJetpackRotAxisX[playerid]     = EXTGAME::GlobalJetpackRotAxisX;
+    EXTGAME::PlayerJetpackRotAxisY[playerid]     = EXTGAME::GlobalJetpackRotAxisY;
+    EXTGAME::PlayerJetpackRotAxisZ[playerid]     = EXTGAME::GlobalJetpackRotAxisZ;
+    EXTGAME::PlayerKnockOffBike[playerid]        = EXTGAME::GlobalKnockOffBike;
+    EXTGAME::PlayerFireProof[playerid]           = EXTGAME::GlobalFireProof;
+    EXTGAME::PlayerInfiniteSprint[playerid]      = EXTGAME::GlobalInfiniteSprint;
+    EXTGAME::PlayerSunEnabled[playerid]          = EXTGAME::GlobalSunEnabled;
 
-    g_PlayerMoonEnabled[playerid]         = g_GlobalMoonEnabled;
-    g_PlayerStarsEnabled[playerid]        = g_GlobalStarsEnabled;
-    g_PlayerLowCloudsEnabled[playerid]    = g_GlobalLowCloudsEnabled;
-    g_PlayerFluffyCloudsEnabled[playerid] = g_GlobalFluffyCloudsEnabled;
-    g_PlayerRainbowEnabled[playerid]      = g_GlobalRainbowEnabled;
-    g_PlayerWaterLevelSet[playerid]       = g_GlobalWaterLevelSet;
-    g_PlayerWaterLevel[playerid]          = g_GlobalWaterLevel;
-    g_PlayerWaterIncludeNonSea[playerid]  = g_GlobalWaterIncludeNonSea;
-    g_PlayerWaterIncludeSea[playerid]     = g_GlobalWaterIncludeSea;
-    g_PlayerWaterIncludeOutside[playerid] = g_GlobalWaterIncludeOutside;
-    g_PlayerWaterWaveHeight[playerid]     = g_GlobalWaterWaveHeight;
-    g_PlayerHUDComponents[playerid]       = g_GlobalHUDComponents;
-    g_PlayerHUDColourAmmo[playerid]       = g_GlobalHUDColours[0];
-    g_PlayerHUDColourWeaponIcon[playerid] = g_GlobalHUDColours[1];
-    g_PlayerHUDColourHealth[playerid]      = g_GlobalHUDColours[2];
-    g_PlayerHUDColourOxygen[playerid]      = g_GlobalHUDColours[3];
-    g_PlayerHUDColourArmour[playerid]      = g_GlobalHUDColours[4];
-    g_PlayerHUDColourRadar[playerid]       = g_GlobalHUDColours[5];
-    g_PlayerHUDColourCrosshair[playerid]   = g_GlobalHUDColours[6];
-    g_PlayerHUDColourMoney[playerid]       = g_GlobalHUDColours[7];
-    g_PlayerHUDColourLaserDot[playerid]    = g_GlobalHUDColours[8];
+    EXTGAME::PlayerMoonEnabled[playerid]         = EXTGAME::GlobalMoonEnabled;
+    EXTGAME::PlayerStarsEnabled[playerid]        = EXTGAME::GlobalStarsEnabled;
+    EXTGAME::PlayerLowCloudsEnabled[playerid]    = EXTGAME::GlobalLowCloudsEnabled;
+    EXTGAME::PlayerFluffyCloudsEnabled[playerid] = EXTGAME::GlobalFluffyCloudsEnabled;
+    EXTGAME::PlayerRainbowEnabled[playerid]      = EXTGAME::GlobalRainbowEnabled;
+    EXTGAME::PlayerWaterLevelSet[playerid]       = EXTGAME::GlobalWaterLevelSet;
+    EXTGAME::PlayerWaterLevel[playerid]          = EXTGAME::GlobalWaterLevel;
+    EXTGAME::PlayerWaterIncludeNonSea[playerid]  = EXTGAME::GlobalWaterIncludeNonSea;
+    EXTGAME::PlayerWaterIncludeSea[playerid]     = EXTGAME::GlobalWaterIncludeSea;
+    EXTGAME::PlayerWaterIncludeOutside[playerid] = EXTGAME::GlobalWaterIncludeOutside;
+    EXTGAME::PlayerWaterWaveHeight[playerid]     = EXTGAME::GlobalWaterWaveHeight;
+    EXTGAME::PlayerHUDComponents[playerid]       = EXTGAME::GlobalHUDComponents;
+    EXTGAME::PlayerHUDColourAmmo[playerid]       = EXTGAME::GlobalHUDColours[0];
+    EXTGAME::PlayerHUDColourWeaponIcon[playerid] = EXTGAME::GlobalHUDColours[1];
+    EXTGAME::PlayerHUDColourHealth[playerid]      = EXTGAME::GlobalHUDColours[2];
+    EXTGAME::PlayerHUDColourOxygen[playerid]      = EXTGAME::GlobalHUDColours[3];
+    EXTGAME::PlayerHUDColourArmour[playerid]      = EXTGAME::GlobalHUDColours[4];
+    EXTGAME::PlayerHUDColourRadar[playerid]       = EXTGAME::GlobalHUDColours[5];
+    EXTGAME::PlayerHUDColourCrosshair[playerid]   = EXTGAME::GlobalHUDColours[6];
+    EXTGAME::PlayerHUDColourMoney[playerid]       = EXTGAME::GlobalHUDColours[7];
+    EXTGAME::PlayerHUDColourLaserDot[playerid]    = EXTGAME::GlobalHUDColours[8];
+    EXTGAME::PlayerHUDColourWanted[playerid]      = EXTGAME::GlobalHUDColours[9];
+    EXTGAME::PlayerHUDColourRadio[playerid]       = EXTGAME::GlobalHUDColours[10];
+    EXTGAME::PlayerHUDColourRadioTuning[playerid] = EXTGAME::GlobalHUDColours[11];
+    EXTGAME::PlayerHUDColourClock[playerid]       = EXTGAME::GlobalHUDColours[12];
+
+    EXTGAME::PlayerNightVision[playerid]          = EXTGAME::GlobalNightVision;
+    EXTGAME::PlayerThermalVision[playerid]        = EXTGAME::GlobalThermalVision;
+    EXTGAME::PlayerNoReload[playerid]             = EXTGAME::GlobalNoReload;
+    EXTGAME::PlayerSwitchReload[playerid]         = EXTGAME::GlobalSwitchReload;
+    EXTGAME::PlayerQuickReload[playerid]          = EXTGAME::GlobalQuickReload;
+    EXTGAME::PlayerInfiniteOxygen[playerid]       = EXTGAME::GlobalInfiniteOxygen;
+    EXTGAME::PlayerPedAnims[playerid]             = 0;
+    EXTGAME::PlayerCursor[playerid]               = false;
+    EXTGAME::PlayerPlaneRadarColor[playerid]      = EXTGAME::GlobalPlaneRadarColor;
+    EXTGAME::PlayerSunColorSet[playerid]          = EXTGAME::GlobalSunColorSet;
+    EXTGAME::PlayerSunCoreColor[playerid]         = EXTGAME::GlobalSunCoreColor;
+    EXTGAME::PlayerSunCoronaColor[playerid]       = EXTGAME::GlobalSunCoronaColor;
+    EXTGAME::PlayerMoonColorSet[playerid]         = EXTGAME::GlobalMoonColorSet;
+    EXTGAME::PlayerMoonColor[playerid]            = EXTGAME::GlobalMoonColor;
+    EXTGAME::PlayerVehicleBlur[playerid]          = EXTGAME::GlobalVehicleBlur;
+    EXTGAME::PlayerVehicleBlurIntensity[playerid] = EXTGAME::GlobalVehicleBlurIntensity;
+    EXTGAME::PlayerInPauseMenu[playerid]          = false;
 
     BroadcastClearPlayerCJCache(playerid);
 
     for (new _ptd = 0; _ptd < MAX_PLAYER_TEXT_DRAWS; _ptd++) {
-        g_PlayerTextDrawRotation[playerid][_ptd][tdRotEnabled] = false;
-        g_PlayerTextDrawRotation[playerid][_ptd][tdRotAngle] = 0.0;
-        g_PlayerTextDrawRotation[playerid][_ptd][tdRotPivotX] = -1.0;
-        g_PlayerTextDrawRotation[playerid][_ptd][tdRotPivotY] = -1.0;
-        g_PlayerTextDrawRotation[playerid][_ptd][tdRotSpinSpeed] = 0.0;
+        EXTGAME::PlayerTextDrawRotation[playerid][_ptd][tdRotEnabled] = false;
+        EXTGAME::PlayerTextDrawRotation[playerid][_ptd][tdRotAngle] = 0.0;
+        EXTGAME::PlayerTextDrawRotation[playerid][_ptd][tdRotPivotX] = -1.0;
+        EXTGAME::PlayerTextDrawRotation[playerid][_ptd][tdRotPivotY] = -1.0;
+        EXTGAME::PlayerTextDrawRotation[playerid][_ptd][tdRotSpinSpeed] = 0.0;
     }
     #if defined EXTG_OnPlayerDisconnect
         return EXTG_OnPlayerDisconnect(playerid, reason);
@@ -2234,10 +2905,10 @@ public OnIncomingPacket(playerid, packetid, BitStream:bs) {
                 PR_UINT32, challenge
             );
             if (magic == EXTENDEDGAME_HANDSHAKE_MAGIC) {
-                new bool:wasInstalled = g_PlayerHasPlugin[playerid];
-                g_PlayerHasPlugin[playerid] = true;
-                g_PlayerPluginVersion[playerid] = version;
-                g_PlayerPluginChecked[playerid] = true;
+                new bool:wasInstalled = EXTGAME::PlayerHasPlugin[playerid];
+                EXTGAME::PlayerHasPlugin[playerid] = true;
+                EXTGAME::PlayerPluginVersion[playerid] = version;
+                EXTGAME::PlayerPluginChecked[playerid] = true;
 
                 // Send immediate Handshake ACK back to the client
                 new BitStream:ack = BS_New();
@@ -2252,13 +2923,29 @@ public OnIncomingPacket(playerid, packetid, BitStream:bs) {
 
                 if (!wasInstalled) {
                     printf("[ExtendedGame] Player %d confirmed BrownTurbo-ExtendedGame ASI (version 0x%04x).", playerid, version);
-                    new funcName[32] = "_DeferredSyncPlayerExtendedGame";
-                    SetTimerEx(funcName, 50, false, "i", playerid);
+                    new cbDeferred[] = "_DeferredSyncPlayerExtendedGame";
+                    new fmtI[] = "i";
+                    SetTimerEx(cbDeferred, 50, false, fmtI, playerid);
 
-                    #if defined OnPlayerExtendedGameCheck
-                        OnPlayerExtendedGameCheck(playerid, true, version);
-                    #endif
+                    CallLocalFunction("OnPlayerExtendedGameCheck", "iii", playerid, true, version);
                 }
+            }
+            return 0; // Handled, discard packet
+        } else if (actionid == EXTENDEDGAME_ACTION_PAUSE_MENU_EVENT) {
+            new eventType, fromPage, toPage;
+            BS_ReadValue(bs,
+                PR_UINT8, eventType,
+                PR_UINT8, fromPage,
+                PR_UINT8, toPage
+            );
+            if (eventType == PAUSE_MENU_EVENT_OPEN) {
+                EXTGAME::PlayerInPauseMenu[playerid] = true;
+                CallLocalFunction("OnPlayerOpenPauseMenu", "i", playerid);
+            } else if (eventType == PAUSE_MENU_EVENT_CLOSE) {
+                EXTGAME::PlayerInPauseMenu[playerid] = false;
+                CallLocalFunction("OnPlayerClosePauseMenu", "i", playerid);
+            } else if (eventType == PAUSE_MENU_EVENT_SUBMENU) {
+                CallLocalFunction("OnPlayerEnterPauseSubmenu", "iii", playerid, fromPage, toPage);
             }
             return 0; // Handled, discard packet
         }
@@ -2282,7 +2969,7 @@ public OnIncomingPacket(playerid, packetid, BitStream:bs) {
 // Deferred synchronization callback executed 50ms after handshake to keep OnIncomingPacket lightweight
 forward _DeferredSyncPlayerExtendedGame(playerid);
 public _DeferredSyncPlayerExtendedGame(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid) || !g_PlayerHasPlugin[playerid])
+    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid) || !EXTGAME::PlayerHasPlugin[playerid])
         return 0;
 
     _SyncPlayerExtendedGameSettings(playerid);
@@ -2298,57 +2985,77 @@ public _DeferredSyncPlayerExtendedGame(playerid) {
 // 5. Hook OnPlayerConnect: Initialize player state and start presence handshake
 forward EXTG_OnPlayerPluginTimeout(playerid);
 public EXTG_OnPlayerPluginTimeout(playerid) {
-    if (IsPlayerConnected(playerid) && !g_PlayerPluginChecked[playerid]) {
-        g_PlayerPluginChecked[playerid] = true;
-        g_PlayerHasPlugin[playerid] = false;
-        #if defined OnPlayerExtendedGameCheck
-            OnPlayerExtendedGameCheck(playerid, false, 0);
-        #endif
+    if (IsPlayerConnected(playerid) && !EXTGAME::PlayerPluginChecked[playerid]) {
+        EXTGAME::PlayerPluginChecked[playerid] = true;
+        EXTGAME::PlayerHasPlugin[playerid] = false;
+        CallLocalFunction("OnPlayerExtendedGameCheck", "iii", playerid, false, 0);
     }
     return 1;
 }
 
 static stock _InitPlayerExtendedGame(playerid) {
     ResetPlayerCJData(playerid);
-    g_PlayerHasPlugin[playerid] = false;
-    g_PlayerPluginVersion[playerid] = 0;
-    g_PlayerPluginChecked[playerid] = false;
+    EXTGAME::PlayerHasPlugin[playerid] = false;
+    EXTGAME::PlayerPluginVersion[playerid] = 0;
+    EXTGAME::PlayerPluginChecked[playerid] = false;
 
-    g_PlayerAircraftHeightLimit[playerid] = g_GlobalAircraftHeightLimit;
-    g_PlayerJetpackHeightLimit[playerid]  = g_GlobalJetpackHeightLimit;
-    g_PlayerJetpackOffsetX[playerid]      = g_GlobalJetpackOffsetX;
-    g_PlayerJetpackOffsetY[playerid]      = g_GlobalJetpackOffsetY;
-    g_PlayerJetpackOffsetZ[playerid]      = g_GlobalJetpackOffsetZ;
-    g_PlayerJetpackRotAngle[playerid]     = g_GlobalJetpackRotAngle;
-    g_PlayerJetpackRotAxisX[playerid]     = g_GlobalJetpackRotAxisX;
-    g_PlayerJetpackRotAxisY[playerid]     = g_GlobalJetpackRotAxisY;
-    g_PlayerJetpackRotAxisZ[playerid]     = g_GlobalJetpackRotAxisZ;
-    g_PlayerKnockOffBike[playerid]        = g_GlobalKnockOffBike;
-    g_PlayerFireProof[playerid]           = g_GlobalFireProof;
-    g_PlayerInfiniteSprint[playerid]      = g_GlobalInfiniteSprint;
-    g_PlayerSunEnabled[playerid]          = g_GlobalSunEnabled;
+    EXTGAME::PlayerAircraftHeightLimit[playerid] = EXTGAME::GlobalAircraftHeightLimit;
+    EXTGAME::PlayerJetpackHeightLimit[playerid]  = EXTGAME::GlobalJetpackHeightLimit;
+    EXTGAME::PlayerJetpackOffsetX[playerid]      = EXTGAME::GlobalJetpackOffsetX;
+    EXTGAME::PlayerJetpackOffsetY[playerid]      = EXTGAME::GlobalJetpackOffsetY;
+    EXTGAME::PlayerJetpackOffsetZ[playerid]      = EXTGAME::GlobalJetpackOffsetZ;
+    EXTGAME::PlayerJetpackRotAngle[playerid]     = EXTGAME::GlobalJetpackRotAngle;
+    EXTGAME::PlayerJetpackRotAxisX[playerid]     = EXTGAME::GlobalJetpackRotAxisX;
+    EXTGAME::PlayerJetpackRotAxisY[playerid]     = EXTGAME::GlobalJetpackRotAxisY;
+    EXTGAME::PlayerJetpackRotAxisZ[playerid]     = EXTGAME::GlobalJetpackRotAxisZ;
+    EXTGAME::PlayerKnockOffBike[playerid]        = EXTGAME::GlobalKnockOffBike;
+    EXTGAME::PlayerFireProof[playerid]           = EXTGAME::GlobalFireProof;
+    EXTGAME::PlayerInfiniteSprint[playerid]      = EXTGAME::GlobalInfiniteSprint;
+    EXTGAME::PlayerSunEnabled[playerid]          = EXTGAME::GlobalSunEnabled;
 
-    g_PlayerMoonEnabled[playerid]         = g_GlobalMoonEnabled;
-    g_PlayerStarsEnabled[playerid]        = g_GlobalStarsEnabled;
-    g_PlayerLowCloudsEnabled[playerid]    = g_GlobalLowCloudsEnabled;
-    g_PlayerFluffyCloudsEnabled[playerid] = g_GlobalFluffyCloudsEnabled;
-    g_PlayerRainbowEnabled[playerid]      = g_GlobalRainbowEnabled;
-    g_PlayerWaterLevelSet[playerid]       = g_GlobalWaterLevelSet;
-    g_PlayerWaterLevel[playerid]          = g_GlobalWaterLevel;
-    g_PlayerWaterIncludeNonSea[playerid]  = g_GlobalWaterIncludeNonSea;
-    g_PlayerWaterIncludeSea[playerid]     = g_GlobalWaterIncludeSea;
-    g_PlayerWaterIncludeOutside[playerid] = g_GlobalWaterIncludeOutside;
-    g_PlayerWaterWaveHeight[playerid]     = g_GlobalWaterWaveHeight;
-    g_PlayerHUDComponents[playerid]       = g_GlobalHUDComponents;
-    g_PlayerHUDColourAmmo[playerid]       = g_GlobalHUDColours[0];
-    g_PlayerHUDColourWeaponIcon[playerid] = g_GlobalHUDColours[1];
-    g_PlayerHUDColourHealth[playerid]     = g_GlobalHUDColours[2];
-    g_PlayerHUDColourOxygen[playerid]      = g_GlobalHUDColours[3];
-    g_PlayerHUDColourArmour[playerid]      = g_GlobalHUDColours[4];
-    g_PlayerHUDColourRadar[playerid]       = g_GlobalHUDColours[5];
-    g_PlayerHUDColourCrosshair[playerid]   = g_GlobalHUDColours[6];
-    g_PlayerHUDColourMoney[playerid]       = g_GlobalHUDColours[7];
-    g_PlayerHUDColourLaserDot[playerid]    = g_GlobalHUDColours[8];
+    EXTGAME::PlayerMoonEnabled[playerid]         = EXTGAME::GlobalMoonEnabled;
+    EXTGAME::PlayerStarsEnabled[playerid]        = EXTGAME::GlobalStarsEnabled;
+    EXTGAME::PlayerLowCloudsEnabled[playerid]    = EXTGAME::GlobalLowCloudsEnabled;
+    EXTGAME::PlayerFluffyCloudsEnabled[playerid] = EXTGAME::GlobalFluffyCloudsEnabled;
+    EXTGAME::PlayerRainbowEnabled[playerid]      = EXTGAME::GlobalRainbowEnabled;
+    EXTGAME::PlayerWaterLevelSet[playerid]       = EXTGAME::GlobalWaterLevelSet;
+    EXTGAME::PlayerWaterLevel[playerid]          = EXTGAME::GlobalWaterLevel;
+    EXTGAME::PlayerWaterIncludeNonSea[playerid]  = EXTGAME::GlobalWaterIncludeNonSea;
+    EXTGAME::PlayerWaterIncludeSea[playerid]     = EXTGAME::GlobalWaterIncludeSea;
+    EXTGAME::PlayerWaterIncludeOutside[playerid] = EXTGAME::GlobalWaterIncludeOutside;
+    EXTGAME::PlayerWaterWaveHeight[playerid]     = EXTGAME::GlobalWaterWaveHeight;
+    EXTGAME::PlayerHUDComponents[playerid]       = EXTGAME::GlobalHUDComponents;
+    EXTGAME::PlayerHUDColourAmmo[playerid]       = EXTGAME::GlobalHUDColours[0];
+    EXTGAME::PlayerHUDColourWeaponIcon[playerid] = EXTGAME::GlobalHUDColours[1];
+    EXTGAME::PlayerHUDColourHealth[playerid]     = EXTGAME::GlobalHUDColours[2];
+    EXTGAME::PlayerHUDColourOxygen[playerid]      = EXTGAME::GlobalHUDColours[3];
+    EXTGAME::PlayerHUDColourArmour[playerid]      = EXTGAME::GlobalHUDColours[4];
+    EXTGAME::PlayerHUDColourRadar[playerid]       = EXTGAME::GlobalHUDColours[5];
+    EXTGAME::PlayerHUDColourCrosshair[playerid]   = EXTGAME::GlobalHUDColours[6];
+    EXTGAME::PlayerHUDColourMoney[playerid]       = EXTGAME::GlobalHUDColours[7];
+    EXTGAME::PlayerHUDColourLaserDot[playerid]    = EXTGAME::GlobalHUDColours[8];
+    EXTGAME::PlayerHUDColourWanted[playerid]      = EXTGAME::GlobalHUDColours[9];
+    EXTGAME::PlayerHUDColourRadio[playerid]       = EXTGAME::GlobalHUDColours[10];
+    EXTGAME::PlayerHUDColourRadioTuning[playerid] = EXTGAME::GlobalHUDColours[11];
+    EXTGAME::PlayerHUDColourClock[playerid]       = EXTGAME::GlobalHUDColours[12];
+
+    EXTGAME::PlayerNightVision[playerid]          = EXTGAME::GlobalNightVision;
+    EXTGAME::PlayerThermalVision[playerid]        = EXTGAME::GlobalThermalVision;
+    EXTGAME::PlayerNoReload[playerid]             = EXTGAME::GlobalNoReload;
+    EXTGAME::PlayerSwitchReload[playerid]         = EXTGAME::GlobalSwitchReload;
+    EXTGAME::PlayerQuickReload[playerid]          = EXTGAME::GlobalQuickReload;
+    EXTGAME::PlayerInfiniteOxygen[playerid]       = EXTGAME::GlobalInfiniteOxygen;
+    EXTGAME::PlayerPedAnims[playerid]             = 0;
+    EXTGAME::PlayerCursor[playerid]               = false;
+    EXTGAME::PlayerPlaneRadarColor[playerid]      = EXTGAME::GlobalPlaneRadarColor;
+    EXTGAME::PlayerSunColorSet[playerid]          = EXTGAME::GlobalSunColorSet;
+    EXTGAME::PlayerSunCoreColor[playerid]         = EXTGAME::GlobalSunCoreColor;
+    EXTGAME::PlayerSunCoronaColor[playerid]       = EXTGAME::GlobalSunCoronaColor;
+    EXTGAME::PlayerMoonColorSet[playerid]         = EXTGAME::GlobalMoonColorSet;
+    EXTGAME::PlayerMoonColor[playerid]            = EXTGAME::GlobalMoonColor;
+    EXTGAME::PlayerVehicleBlur[playerid]          = EXTGAME::GlobalVehicleBlur;
+    EXTGAME::PlayerVehicleBlurIntensity[playerid] = EXTGAME::GlobalVehicleBlurIntensity;
+    EXTGAME::PlayerInPauseMenu[playerid]          = false;
 
     // Send handshake ping to detect ASI plugin presence
     CheckPlayerExtendedGame(playerid, 0);
@@ -2439,7 +3146,7 @@ stock EXTG_TextDrawDestroy(Text:text) {
 #define TextDrawDestroy EXTG_TextDrawDestroy
 
 // 9. Hook PlayerTextDrawDestroy: Auto-reset rotation state when player textdraw is destroyed
-stock EXTG_PlayerTextDrawDestroy(playerid, PlayerText:text) {
+stock EXTGAME::PlayerTextDrawDestroy(playerid, PlayerText:text) {
     if (_:text >= 0 && _:text < MAX_PLAYER_TEXT_DRAWS) {
         ResetPlayerTextDrawRotation(playerid, text);
     }
@@ -2450,17 +3157,17 @@ stock EXTG_PlayerTextDrawDestroy(playerid, PlayerText:text) {
 #else
     #define _ALS_PlayerTextDrawDestroy
 #endif
-#define PlayerTextDrawDestroy EXTG_PlayerTextDrawDestroy
+#define PlayerTextDrawDestroy EXTGAME::PlayerTextDrawDestroy
 
 // 10. Hook TextDrawShowForPlayer: Auto-sync rotation when textdraw is shown
 stock EXTG_TextDrawShowForPlayer(playerid, Text:text) {
     new ret = TextDrawShowForPlayer(playerid, text);
-    if (_:text >= 0 && _:text < MAX_TEXT_DRAWS && g_GlobalTextDrawRotation[_:text][tdRotEnabled]) {
+    if (_:text >= 0 && _:text < MAX_TEXT_DRAWS && EXTGAME::GlobalTextDrawRotation[_:text][tdRotEnabled]) {
         SetTextDrawRotationForPlayer(playerid, text,
-            g_GlobalTextDrawRotation[_:text][tdRotAngle],
-            g_GlobalTextDrawRotation[_:text][tdRotPivotX],
-            g_GlobalTextDrawRotation[_:text][tdRotPivotY],
-            g_GlobalTextDrawRotation[_:text][tdRotSpinSpeed]
+            EXTGAME::GlobalTextDrawRotation[_:text][tdRotAngle],
+            EXTGAME::GlobalTextDrawRotation[_:text][tdRotPivotX],
+            EXTGAME::GlobalTextDrawRotation[_:text][tdRotPivotY],
+            EXTGAME::GlobalTextDrawRotation[_:text][tdRotSpinSpeed]
         );
     }
     return ret;
@@ -2475,14 +3182,14 @@ stock EXTG_TextDrawShowForPlayer(playerid, Text:text) {
 // 11. Hook TextDrawShowForAll: Auto-sync rotation when textdraw is shown for all
 stock EXTG_TextDrawShowForAll(Text:text) {
     new ret = TextDrawShowForAll(text);
-    if (_:text >= 0 && _:text < MAX_TEXT_DRAWS && g_GlobalTextDrawRotation[_:text][tdRotEnabled]) {
+    if (_:text >= 0 && _:text < MAX_TEXT_DRAWS && EXTGAME::GlobalTextDrawRotation[_:text][tdRotEnabled]) {
         for (new i = 0; i < MAX_PLAYERS; i++) {
             if (IsPlayerConnected(i)) {
                 SetTextDrawRotationForPlayer(i, text,
-                    g_GlobalTextDrawRotation[_:text][tdRotAngle],
-                    g_GlobalTextDrawRotation[_:text][tdRotPivotX],
-                    g_GlobalTextDrawRotation[_:text][tdRotPivotY],
-                    g_GlobalTextDrawRotation[_:text][tdRotSpinSpeed]
+                    EXTGAME::GlobalTextDrawRotation[_:text][tdRotAngle],
+                    EXTGAME::GlobalTextDrawRotation[_:text][tdRotPivotX],
+                    EXTGAME::GlobalTextDrawRotation[_:text][tdRotPivotY],
+                    EXTGAME::GlobalTextDrawRotation[_:text][tdRotSpinSpeed]
                 );
             }
         }
@@ -2497,15 +3204,15 @@ stock EXTG_TextDrawShowForAll(Text:text) {
 #define TextDrawShowForAll EXTG_TextDrawShowForAll
 
 // 12. Hook PlayerTextDrawShow: Auto-sync rotation when player textdraw is shown
-stock EXTG_PlayerTextDrawShow(playerid, PlayerText:text) {
+stock EXTGAME::PlayerTextDrawShow(playerid, PlayerText:text) {
     new ret = PlayerTextDrawShow(playerid, text);
     if (playerid >= 0 && playerid < MAX_PLAYERS && _:text >= 0 && _:text < MAX_PLAYER_TEXT_DRAWS) {
-        if (g_PlayerTextDrawRotation[playerid][_:text][tdRotEnabled]) {
+        if (EXTGAME::PlayerTextDrawRotation[playerid][_:text][tdRotEnabled]) {
             SetPlayerTextDrawRotation(playerid, text,
-                g_PlayerTextDrawRotation[playerid][_:text][tdRotAngle],
-                g_PlayerTextDrawRotation[playerid][_:text][tdRotPivotX],
-                g_PlayerTextDrawRotation[playerid][_:text][tdRotPivotY],
-                g_PlayerTextDrawRotation[playerid][_:text][tdRotSpinSpeed]
+                EXTGAME::PlayerTextDrawRotation[playerid][_:text][tdRotAngle],
+                EXTGAME::PlayerTextDrawRotation[playerid][_:text][tdRotPivotX],
+                EXTGAME::PlayerTextDrawRotation[playerid][_:text][tdRotPivotY],
+                EXTGAME::PlayerTextDrawRotation[playerid][_:text][tdRotSpinSpeed]
             );
         }
     }
@@ -2516,4 +3223,4 @@ stock EXTG_PlayerTextDrawShow(playerid, PlayerText:text) {
 #else
     #define _ALS_PlayerTextDrawShow
 #endif
-#define PlayerTextDrawShow EXTG_PlayerTextDrawShow
+#define PlayerTextDrawShow EXTGAME::PlayerTextDrawShow

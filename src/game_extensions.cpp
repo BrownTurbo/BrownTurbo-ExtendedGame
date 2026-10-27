@@ -1,6 +1,7 @@
 #include "game_extensions.h"
 #include "defs.h"
 #include "utils.h"
+#include "packet_handler.h"
 
 #include <MinHook.h>
 #include <plugin.h>
@@ -114,8 +115,51 @@ struct HUDColoursOverride {
     uint32_t crosshairColor  = 0;
     uint32_t moneyColor      = 0;
     uint32_t laserDotColor   = 0;
+    uint32_t wantedColor     = 0;
+    uint32_t radioColor      = 0;
+    uint32_t radioTuningColor= 0;
+    uint32_t clockColor      = 0;
 };
 static HUDColoursOverride g_HUDColours;
+
+// Vision states
+static bool g_bNightVision = false;
+static bool s_bNightVisionActive = false;
+static bool g_bThermalVision = false;
+static bool s_bThermalVisionActive = false;
+
+// Weapon reload states
+static bool g_bNoReload = false;
+static bool g_bSwitchReload = true;
+static bool g_bQuickReload = false;
+
+// Physics & movement states
+static bool g_bInfiniteOxygen = false;
+static bool s_bInfiniteOxygenActive = false;
+static std::unordered_map<uint16_t, uint8_t> g_PlayerPedAnims; // 0=default, 1=ped, 2=player
+static bool g_bAnyPedAnims = false;
+static bool g_bPlayerCursor = false;
+
+// Plane radar color state
+static bool g_bPlaneRadarColorSet = false;
+static uint32_t g_nPlaneRadarColor = 0xFFFFFFFF;
+
+// Sun color state
+static bool g_bSunColorSet = false;
+static uint32_t g_nSunCoreColor = 0xFFFFFFFF;
+static uint32_t g_nSunCoronaColor = 0xFFFFFFFF;
+
+// Moon color state
+static bool g_bMoonColorSet = false;
+static uint32_t g_nMoonColor = 0xFFFFFFFF;
+
+// Vehicle speed blur motion state
+static bool g_bVehicleBlurEnabled = false;
+static uint8_t g_nVehicleBlurIntensity = 36;
+
+// Pause menu tracking state
+static bool s_bMenuWasActive = false;
+static uint8_t s_nMenuLastPage = 0;
 
 static std::unordered_map<uint16_t, uint8_t> g_PlayerKnockOffBike;
 static std::unordered_map<uint16_t, bool>    g_PlayerFireProof;
@@ -219,6 +263,225 @@ static void ApplyLaserDotColorPatch(uint32_t col) {
         plugin::patch::SetUChar(0x73AA88, 0x00);
         plugin::patch::SetUChar(0x73AA8A, 0x00);
         plugin::patch::SetUChar(0x73AA8C, 0x80);
+    }
+}
+
+static void keep_byte(uintptr_t address, bool targetState, bool& currentState) {
+    if (targetState) {
+        *reinterpret_cast<uint8_t*>(address) = 1;
+        currentState = true;
+    } else if (currentState) {
+        *reinterpret_cast<uint8_t*>(address) = 0;
+        currentState = false;
+    }
+}
+
+static void ApplyNoReloadPatch(bool enable) {
+    plugin::patch::SetUChar(0x7428AF, enable ? 0x90 : 0x48);
+}
+
+static void ApplySwitchReloadPatch(bool enable) {
+    static const uint8_t origBytes[6] = { 0x89, 0x88, 0xA8, 0x05, 0x00, 0x00 };
+    static const uint8_t nopBytes[6]  = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
+    plugin::patch::SetRaw(0x60B4FA, const_cast<uint8_t*>(enable ? origBytes : nopBytes), 6);
+}
+
+static void ApplyPlaneRadarColorPatch(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+    plugin::patch::SetUInt(0x58A4FF, static_cast<uint32_t>(a));
+    plugin::patch::SetUInt(0x58A506, static_cast<uint32_t>(b));
+    plugin::patch::SetUInt(0x58A50D, static_cast<uint32_t>(g));
+    plugin::patch::SetUInt(0x58A514, static_cast<uint32_t>(r));
+}
+
+static const uint8_t g_origSunMoves[6][4] = {
+    { 0x66, 0x89, 0x46, 0x30 }, // 0x55F9B2: mov [esi+30h], ax
+    { 0x66, 0x89, 0x46, 0x32 }, // 0x55F9DD: mov [esi+32h], ax
+    { 0x66, 0x89, 0x46, 0x34 }, // 0x55FA08: mov [esi+34h], ax
+    { 0x66, 0x89, 0x46, 0x36 }, // 0x55FA33: mov [esi+36h], ax
+    { 0x66, 0x89, 0x46, 0x38 }, // 0x55FA5E: mov [esi+38h], ax
+    { 0x66, 0x89, 0x46, 0x3A }  // 0x55FA8D: mov [esi+3Ah], ax
+};
+static const uintptr_t g_sunMoveAddrs[6] = {
+    0x55F9B2, 0x55F9DD, 0x55FA08, 0x55FA33, 0x55FA5E, 0x55FA8D
+};
+
+static void ApplySunColorPatch(bool enable) {
+    static const uint8_t nop4[4] = { 0x90, 0x90, 0x90, 0x90 };
+    for (int i = 0; i < 6; ++i) {
+        plugin::patch::SetRaw(g_sunMoveAddrs[i], const_cast<uint8_t*>(enable ? nop4 : g_origSunMoves[i]), 4);
+    }
+}
+
+static void ApplyVehicleBlurPatch(bool enable, uint8_t intensity) {
+    static const uint8_t callBytes[5] = { 0xE8, 0x11, 0xE2, 0xFF, 0xFF };
+    static const uint8_t nopBytes[5]  = { 0x90, 0x90, 0x90, 0x90, 0x90 };
+    plugin::patch::SetRaw(0x704E8A, const_cast<uint8_t*>(enable ? callBytes : nopBytes), 5);
+    *reinterpret_cast<int32_t*>(0x8D5104) = enable ? (intensity > 0 ? static_cast<int32_t>(intensity) : 36) : 0;
+}
+
+// Detour for CSprite::RenderOneXLUSprite calls in CClouds::Render (0x713C4C and 0x713D02) to tint the Moon
+static void __cdecl MoonSpriteRenderHook(float x, float y, float z, float halfWidth, float halfHeight,
+    uint8_t red, uint8_t green, uint8_t blue, int16_t alpha, float rhw,
+    uint8_t intensity, uint8_t udir, uint8_t vdir)
+{
+    if (g_bMoonColorSet) {
+        uint8_t mR = static_cast<uint8_t>((g_nMoonColor >> 24) & 0xFF);
+        uint8_t mG = static_cast<uint8_t>((g_nMoonColor >> 16) & 0xFF);
+        uint8_t mB = static_cast<uint8_t>((g_nMoonColor >> 8) & 0xFF);
+        uint8_t mA = static_cast<uint8_t>(g_nMoonColor & 0xFF);
+
+        red   = static_cast<uint8_t>((static_cast<uint32_t>(red)   * mR) / 255);
+        green = static_cast<uint8_t>((static_cast<uint32_t>(green) * mG) / 255);
+        blue  = static_cast<uint8_t>((static_cast<uint32_t>(blue)  * mB) / 255);
+        if (mA < 255) {
+            alpha = static_cast<int16_t>((static_cast<int32_t>(alpha) * mA) / 255);
+        }
+    }
+    reinterpret_cast<void(__cdecl*)(float, float, float, float, float, uint8_t, uint8_t, uint8_t, int16_t, float, uint8_t, uint8_t, uint8_t)>(0x70D000)(
+        x, y, z, halfWidth, halfHeight, red, green, blue, alpha, rhw, intensity, udir, vdir
+    );
+}
+
+// Ped Animations check hook (0x609A1F)
+static int __cdecl PedAnimsCheckForPed(CPed* ped) {
+    if (!g_bAnyPedAnims || !ped) return 0;
+    uint16_t playerId = GetPedPlayerId(ped);
+    if (playerId == 0xFFFF) {
+        if (IsLocalPlayerPed(ped)) {
+            auto it = g_PlayerPedAnims.find(CJ_LOCAL_PLAYER_ID);
+            if (it != g_PlayerPedAnims.end()) return it->second;
+        }
+        return 0;
+    }
+    auto it = g_PlayerPedAnims.find(playerId);
+    if (it != g_PlayerPedAnims.end()) return it->second;
+    return 0;
+}
+
+static int s_nPedAnimsAnswer = 0;
+__declspec(naked) static void PedAnimsCave() {
+    __asm {
+        pushad
+        push esi
+        call PedAnimsCheckForPed
+        add esp, 4
+        mov s_nPedAnimsAnswer, eax
+        popad
+        cmp s_nPedAnimsAnswer, 1
+        je to_model_group
+        cmp s_nPedAnimsAnswer, 2
+        je to_player_group
+        cmp dword ptr [esi + 0x598], 1
+        jne to_player_group
+    to_model_group:
+        push 0x609A28
+        ret
+    to_player_group:
+        push 0x609A3B
+        ret
+    }
+}
+
+static bool s_bPedAnimsHooked = false;
+static const uint8_t s_origPedAnims[7] = { 0x83, 0xBE, 0x98, 0x05, 0x00, 0x00, 0x01 };
+
+static void InstallPedAnimsHook() {
+    if (s_bPedAnimsHooked) return;
+    if (memcmp(reinterpret_cast<const void*>(0x609A1F), s_origPedAnims, sizeof(s_origPedAnims)) != 0) {
+        ClientLog(LogLevel::Warning, "InstallPedAnimsHook: unexpected opcode at 0x609A1F, skipping");
+        return;
+    }
+    uint8_t jmpCode[7];
+    jmpCode[0] = 0xE9;
+    int32_t rel = static_cast<int32_t>(reinterpret_cast<uintptr_t>(&PedAnimsCave) - (0x609A1F + 5));
+    memcpy(jmpCode + 1, &rel, 4);
+    jmpCode[5] = 0x90;
+    jmpCode[6] = 0x90;
+    plugin::patch::SetRaw(0x609A1F, jmpCode, sizeof(jmpCode));
+    s_bPedAnimsHooked = true;
+}
+
+static void RemovePedAnimsHook() {
+    if (!s_bPedAnimsHooked) return;
+    plugin::patch::SetRaw(0x609A1F, const_cast<uint8_t*>(s_origPedAnims), sizeof(s_origPedAnims));
+    s_bPedAnimsHooked = false;
+}
+
+// Extended HUD Colour thunks (Wanted: 0x58DDD4, Radio Tuned: 0x4E9F9C, Radio Tuning: 0x4E9FB2, Clock: 0x58EBD5)
+static void __cdecl OverrideHudColor(uint32_t colorValue, uint8_t* pRgba) {
+    if (colorValue == 0 || !pRgba) return;
+    pRgba[0] = static_cast<uint8_t>((colorValue >> 24) & 0xFF);
+    pRgba[1] = static_cast<uint8_t>((colorValue >> 16) & 0xFF);
+    pRgba[2] = static_cast<uint8_t>((colorValue >> 8) & 0xFF);
+    uint8_t a = static_cast<uint8_t>(colorValue & 0xFF);
+    if (a != 0) pRgba[3] = a;
+}
+
+static uint32_t s_dwRetWanted = 0;
+__declspec(naked) static void ThunkWantedColour() {
+    __asm {
+        pop s_dwRetWanted
+        mov edx, 0x58FEE0
+        call edx
+        pushad
+        push eax
+        push g_HUDColours.wantedColor
+        call OverrideHudColor
+        add esp, 8
+        popad
+        push s_dwRetWanted
+        ret
+    }
+}
+
+static uint32_t s_dwRetRadio = 0;
+__declspec(naked) static void ThunkRadioColour() {
+    __asm {
+        pop s_dwRetRadio
+        mov edx, 0x58FEE0
+        call edx
+        pushad
+        push eax
+        push g_HUDColours.radioColor
+        call OverrideHudColor
+        add esp, 8
+        popad
+        push s_dwRetRadio
+        ret
+    }
+}
+
+static uint32_t s_dwRetRadioTuning = 0;
+__declspec(naked) static void ThunkRadioTuningColour() {
+    __asm {
+        pop s_dwRetRadioTuning
+        mov edx, 0x58FEE0
+        call edx
+        pushad
+        push eax
+        push g_HUDColours.radioTuningColor
+        call OverrideHudColor
+        add esp, 8
+        popad
+        push s_dwRetRadioTuning
+        ret
+    }
+}
+
+static uint32_t s_dwRetClock = 0;
+__declspec(naked) static void ThunkClockColour() {
+    __asm {
+        pop s_dwRetClock
+        mov edx, 0x58FEE0
+        call edx
+        pushad
+        push eax
+        push g_HUDColours.clockColor
+        call OverrideHudColor
+        add esp, 8
+        popad
+        push s_dwRetClock
+        ret
     }
 }
 
@@ -756,6 +1019,19 @@ bool Initialize() {
     JETPACK_ROT_AXIS   = g_vecJetpackRotAxis;
     plugin::patch::SetFloat(0x67EB01, g_fJetpackRotAngle);
 
+    // Install extended HUD color thunks
+    plugin::patch::RedirectCall(0x58DDD4, reinterpret_cast<void*>(&ThunkWantedColour));
+    plugin::patch::RedirectCall(0x4E9F9C, reinterpret_cast<void*>(&ThunkRadioColour));
+    plugin::patch::RedirectCall(0x4E9FB2, reinterpret_cast<void*>(&ThunkRadioTuningColour));
+    plugin::patch::RedirectCall(0x58EBD5, reinterpret_cast<void*>(&ThunkClockColour));
+
+    // Install Moon Sprite Render hook (CClouds::Render calls to CSprite::RenderOneXLUSprite)
+    plugin::patch::RedirectCall(0x713C4C, reinterpret_cast<void*>(&MoonSpriteRenderHook));
+    plugin::patch::RedirectCall(0x713D02, reinterpret_cast<void*>(&MoonSpriteRenderHook));
+
+    // Install Ped Animations hook
+    InstallPedAnimsHook();
+
     EnsureJetpackLoaded();
 
     g_bInitialized = true;
@@ -1043,6 +1319,65 @@ void Process() {
             *pRainbow = 1.0f;
         }
     }
+
+    // 6. Maintain Night Vision
+    keep_byte(0xC402B8, g_bNightVision, s_bNightVisionActive);
+
+    // 7. Maintain Thermal Vision
+    keep_byte(0xC402B9, g_bThermalVision, s_bThermalVisionActive);
+
+    // 8. Maintain Infinite Oxygen
+    keep_byte(0x96916E, g_bInfiniteOxygen, s_bInfiniteOxygenActive);
+
+    // 9. Quick reload handler (zeroes weapon timer when reload animation starts)
+    if (g_bQuickReload) {
+        CPlayerPed* pLocal = FindPlayerPed(-1);
+        if (pLocal) {
+            uint8_t slot = pLocal->m_nSelectedWepSlot;
+            if (slot < 13) {
+                uintptr_t weapon = reinterpret_cast<uintptr_t>(pLocal) + 0x5A0 + slot * 0x1C;
+                if (*reinterpret_cast<int*>(weapon + 4) == 2) { // WEAPONSTATE_RELOADING
+                    *reinterpret_cast<int*>(weapon + 0x10) = 0; // timer: done immediately
+                }
+            }
+        }
+    }
+
+    // 10. Poll Pause Menu events
+    bool bMenuActive = *reinterpret_cast<bool*>(0xBA67A4);
+    uint8_t nMenuPage = *reinterpret_cast<uint8_t*>(0xBA68A5);
+    if (bMenuActive != s_bMenuWasActive) {
+        s_bMenuWasActive = bMenuActive;
+        s_nMenuLastPage = nMenuPage;
+        packet_handler::SendPauseMenuEvent(bMenuActive ? PAUSE_MENU_EVENT_OPEN : PAUSE_MENU_EVENT_CLOSE, nMenuPage, nMenuPage);
+    } else if (bMenuActive && nMenuPage != s_nMenuLastPage) {
+        uint8_t oldPage = s_nMenuLastPage;
+        s_nMenuLastPage = nMenuPage;
+        packet_handler::SendPauseMenuEvent(PAUSE_MENU_EVENT_SUBMENU, oldPage, nMenuPage);
+    }
+
+    // 13. Maintain custom Sun Color
+    if (g_bSunColorSet) {
+        uint8_t coreR = static_cast<uint8_t>((g_nSunCoreColor >> 24) & 0xFF);
+        uint8_t coreG = static_cast<uint8_t>((g_nSunCoreColor >> 16) & 0xFF);
+        uint8_t coreB = static_cast<uint8_t>((g_nSunCoreColor >> 8) & 0xFF);
+
+        uint8_t coronaR = static_cast<uint8_t>((g_nSunCoronaColor >> 24) & 0xFF);
+        uint8_t coronaG = static_cast<uint8_t>((g_nSunCoronaColor >> 16) & 0xFF);
+        uint8_t coronaB = static_cast<uint8_t>((g_nSunCoronaColor >> 8) & 0xFF);
+
+        *reinterpret_cast<uint16_t*>(0xB7C4D0) = coreR;
+        *reinterpret_cast<uint16_t*>(0xB7C4D2) = coreG;
+        *reinterpret_cast<uint16_t*>(0xB7C4D4) = coreB;
+        *reinterpret_cast<uint16_t*>(0xB7C4D6) = coronaR;
+        *reinterpret_cast<uint16_t*>(0xB7C4D8) = coronaG;
+        *reinterpret_cast<uint16_t*>(0xB7C4DA) = coronaB;
+    }
+
+    // 14. Maintain Vehicle Speed Blur intensity
+    if (g_bVehicleBlurEnabled) {
+        *reinterpret_cast<int32_t*>(0x8D5104) = g_nVehicleBlurIntensity;
+    }
 }
 
 void Shutdown() {
@@ -1058,6 +1393,28 @@ void Shutdown() {
     MH_DisableHook(reinterpret_cast<void*>(0x5890A0));
     MH_DisableHook(reinterpret_cast<void*>(0x58A330));
     MH_DisableHook(reinterpret_cast<void*>(0x58E020));
+
+    // Restore extended HUD color redirects
+    plugin::patch::RedirectCall(0x58DDD4, reinterpret_cast<void*>(0x58FEE0));
+    plugin::patch::RedirectCall(0x4E9F9C, reinterpret_cast<void*>(0x58FEE0));
+    plugin::patch::RedirectCall(0x4E9FB2, reinterpret_cast<void*>(0x58FEE0));
+    plugin::patch::RedirectCall(0x58EBD5, reinterpret_cast<void*>(0x58FEE0));
+
+    // Restore moon redirects
+    plugin::patch::RedirectCall(0x713C4C, reinterpret_cast<void*>(0x70D000));
+    plugin::patch::RedirectCall(0x713D02, reinterpret_cast<void*>(0x70D000));
+
+    // Remove ped animations hook
+    RemovePedAnimsHook();
+
+    // Restore reload patches
+    ApplyNoReloadPatch(false);
+    ApplySwitchReloadPatch(true);
+
+    // Restore blur, sun and plane radar color
+    ApplyPlaneRadarColorPatch(255, 255, 255, 255);
+    ApplySunColorPatch(false);
+    ApplyVehicleBlurPatch(false, 0);
 
     if (g_bAircraftHeightLimitOperandsCaptured) {
         for (size_t i = 0; i < AIRCRAFT_HEIGHT_LIMIT_OPERANDS.size(); ++i) {
@@ -1415,22 +1772,174 @@ void SetPlayerHUDComponentsColour(uint32_t hudComponents, uint32_t intColour) {
         g_HUDColours.laserDotColor = intColour;
         ApplyLaserDotColorPatch(intColour);
     }
+    if (hudComponents & HUD_COMPONENT_WANTED) {
+        g_HUDColours.wantedColor = intColour;
+    }
+    if (hudComponents & HUD_COMPONENT_RADIO) {
+        g_HUDColours.radioColor = intColour;
+    }
+    if (hudComponents & HUD_COMPONENT_RADIO_TUNING) {
+        g_HUDColours.radioTuningColor = intColour;
+    }
+    if (hudComponents & HUD_COMPONENT_CLOCK) {
+        g_HUDColours.clockColor = intColour;
+    }
 }
 
 uint32_t GetPlayerHUDComponentColour(uint32_t hudComponent) {
     switch (hudComponent) {
-    case HUD_COMPONENT_AMMO:       return g_HUDColours.ammoColor;
-    case HUD_COMPONENT_WEAPONICON: return g_HUDColours.weaponIconColor;
-    case HUD_COMPONENT_HEALTH:     return g_HUDColours.healthColor;
-    case HUD_COMPONENT_OXYGEN:     return g_HUDColours.oxygenColor;
-    case HUD_COMPONENT_ARMOUR:     return g_HUDColours.armourColor;
-    case HUD_COMPONENT_RADAR:      return g_HUDColours.radarColor;
-    case HUD_COMPONENT_CROSSHAIR:  return g_HUDColours.crosshairColor;
-    case HUD_COMPONENT_MONEY:      return g_HUDColours.moneyColor;
-    case HUD_COMPONENT_LASERDOT:   return g_HUDColours.laserDotColor;
+    case HUD_COMPONENT_AMMO:         return g_HUDColours.ammoColor;
+    case HUD_COMPONENT_WEAPONICON:   return g_HUDColours.weaponIconColor;
+    case HUD_COMPONENT_HEALTH:       return g_HUDColours.healthColor;
+    case HUD_COMPONENT_OXYGEN:       return g_HUDColours.oxygenColor;
+    case HUD_COMPONENT_ARMOUR:       return g_HUDColours.armourColor;
+    case HUD_COMPONENT_RADAR:        return g_HUDColours.radarColor;
+    case HUD_COMPONENT_CROSSHAIR:    return g_HUDColours.crosshairColor;
+    case HUD_COMPONENT_MONEY:        return g_HUDColours.moneyColor;
+    case HUD_COMPONENT_LASERDOT:     return g_HUDColours.laserDotColor;
+    case HUD_COMPONENT_WANTED:       return g_HUDColours.wantedColor;
+    case HUD_COMPONENT_RADIO:        return g_HUDColours.radioColor;
+    case HUD_COMPONENT_RADIO_TUNING: return g_HUDColours.radioTuningColor;
+    case HUD_COMPONENT_CLOCK:        return g_HUDColours.clockColor;
     default: break;
     }
     return 0;
+}
+
+// Vision controls
+void ToggleNightVision(bool enable) { g_bNightVision = enable; }
+bool IsNightVisionEnabled() { return g_bNightVision; }
+
+void ToggleThermalVision(bool enable) { g_bThermalVision = enable; }
+bool IsThermalVisionEnabled() { return g_bThermalVision; }
+
+// Weapon reload mechanics
+void SetNoReload(bool enable) {
+    g_bNoReload = enable;
+    ApplyNoReloadPatch(enable);
+}
+bool IsNoReloadEnabled() { return g_bNoReload; }
+
+void ToggleSwitchReload(bool enable) {
+    g_bSwitchReload = enable;
+    ApplySwitchReloadPatch(enable);
+}
+bool IsSwitchReloadEnabled() { return g_bSwitchReload; }
+
+void ToggleQuickReload(bool enable) { g_bQuickReload = enable; }
+bool IsQuickReloadEnabled() { return g_bQuickReload; }
+
+// Physics & movement controls
+void ToggleInfiniteOxygen(bool enable) { g_bInfiniteOxygen = enable; }
+bool IsInfiniteOxygenEnabled() { return g_bInfiniteOxygen; }
+
+void SetPlayerPedAnims(uint16_t playerId, uint8_t mode) {
+    g_PlayerPedAnims[playerId] = mode;
+    g_bAnyPedAnims = false;
+    for (const auto& kv : g_PlayerPedAnims) {
+        if (kv.second != 0) {
+            g_bAnyPedAnims = true;
+            break;
+        }
+    }
+}
+
+uint8_t GetPlayerPedAnims(uint16_t playerId) {
+    auto it = g_PlayerPedAnims.find(playerId);
+    return (it != g_PlayerPedAnims.end()) ? it->second : 0;
+}
+
+void TogglePlayerCursor(bool enable) {
+    g_bPlayerCursor = enable;
+    ToggleSampCursor(enable);
+}
+bool IsPlayerCursorEnabled() { return g_bPlayerCursor; }
+
+// Plane radar altimeter color
+void SetPlaneRadarColor(uint32_t color) {
+    if (color == 0 || color == 0xFFFFFFFF) {
+        g_bPlaneRadarColorSet = false;
+        g_nPlaneRadarColor = 0xFFFFFFFF;
+        ApplyPlaneRadarColorPatch(255, 255, 255, 255);
+    } else {
+        g_bPlaneRadarColorSet = true;
+        g_nPlaneRadarColor = color;
+        uint8_t r = static_cast<uint8_t>((color >> 24) & 0xFF);
+        uint8_t g = static_cast<uint8_t>((color >> 16) & 0xFF);
+        uint8_t b = static_cast<uint8_t>((color >> 8) & 0xFF);
+        uint8_t a = static_cast<uint8_t>(color & 0xFF);
+        ApplyPlaneRadarColorPatch(r, g, b, a);
+    }
+}
+
+void SetPlaneRadarColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+    uint32_t color = (static_cast<uint32_t>(r) << 24) |
+                     (static_cast<uint32_t>(g) << 16) |
+                     (static_cast<uint32_t>(b) << 8)  |
+                     static_cast<uint32_t>(a);
+    SetPlaneRadarColor(color);
+}
+
+uint32_t GetPlaneRadarColor() {
+    return g_nPlaneRadarColor;
+}
+
+void GetPlaneRadarColor(uint8_t& r, uint8_t& g, uint8_t& b, uint8_t& a) {
+    r = static_cast<uint8_t>((g_nPlaneRadarColor >> 24) & 0xFF);
+    g = static_cast<uint8_t>((g_nPlaneRadarColor >> 16) & 0xFF);
+    b = static_cast<uint8_t>((g_nPlaneRadarColor >> 8) & 0xFF);
+    a = static_cast<uint8_t>(g_nPlaneRadarColor & 0xFF);
+}
+
+// Sun color settings (hexadecimal RGBA)
+void SetSunColor(uint32_t coreColor, uint32_t coronaColor) {
+    g_bSunColorSet = true;
+    g_nSunCoreColor = coreColor;
+    g_nSunCoronaColor = coronaColor;
+    ApplySunColorPatch(true);
+}
+
+void ResetSunColor() {
+    g_bSunColorSet = false;
+    ApplySunColorPatch(false);
+}
+
+bool IsSunColorSet() { return g_bSunColorSet; }
+uint32_t GetSunCoreColor() { return g_nSunCoreColor; }
+uint32_t GetSunCoronaColor() { return g_nSunCoronaColor; }
+
+// Moon color settings (hexadecimal RGBA)
+void SetMoonColor(uint32_t color) {
+    if (color == 0 || color == 0xFFFFFFFF) {
+        g_bMoonColorSet = false;
+        g_nMoonColor = 0xFFFFFFFF;
+    } else {
+        g_bMoonColorSet = true;
+        g_nMoonColor = color;
+    }
+}
+
+void ResetMoonColor() {
+    g_bMoonColorSet = false;
+    g_nMoonColor = 0xFFFFFFFF;
+}
+
+bool IsMoonColorSet() { return g_bMoonColorSet; }
+uint32_t GetMoonColor() { return g_nMoonColor; }
+
+// Vehicle speed blur motion toggle
+void ToggleVehicleBlur(bool enable, uint8_t intensity) {
+    g_bVehicleBlurEnabled = enable;
+    g_nVehicleBlurIntensity = intensity > 0 ? intensity : 36;
+    ApplyVehicleBlurPatch(enable, g_nVehicleBlurIntensity);
+}
+
+bool IsVehicleBlurEnabled() { return g_bVehicleBlurEnabled; }
+uint8_t GetVehicleBlurIntensity() { return g_nVehicleBlurIntensity; }
+
+// Pause menu tracking
+bool IsLocalPlayerInPauseMenu() {
+    return s_bMenuWasActive;
 }
 
 void ClearAllStates() {
@@ -1476,6 +1985,49 @@ void ClearAllStates() {
         *reinterpret_cast<bool*>(pPlayerInfo + 0x14C) = false;
         *reinterpret_cast<bool*>(pPlayerInfo + 0x14E) = false;
     }
+
+    g_bNightVision = false;
+    keep_byte(0xC402B8, false, s_bNightVisionActive);
+    g_bThermalVision = false;
+    keep_byte(0xC402B9, false, s_bThermalVisionActive);
+
+    g_bNoReload = false;
+    ApplyNoReloadPatch(false);
+
+    g_bSwitchReload = true;
+    ApplySwitchReloadPatch(true);
+
+    g_bQuickReload = false;
+
+    g_bInfiniteOxygen = false;
+    keep_byte(0x96916E, false, s_bInfiniteOxygenActive);
+
+    g_PlayerPedAnims.clear();
+    g_bAnyPedAnims = false;
+
+    if (g_bPlayerCursor) {
+        g_bPlayerCursor = false;
+        ToggleSampCursor(false);
+    }
+
+    g_bPlaneRadarColorSet = false;
+    g_nPlaneRadarColor = 0xFFFFFFFF;
+    ApplyPlaneRadarColorPatch(255, 255, 255, 255);
+
+    g_bSunColorSet = false;
+    g_nSunCoreColor = 0xFFFFFFFF;
+    g_nSunCoronaColor = 0xFFFFFFFF;
+    ApplySunColorPatch(false);
+
+    g_bMoonColorSet = false;
+    g_nMoonColor = 0xFFFFFFFF;
+
+    g_bVehicleBlurEnabled = false;
+    g_nVehicleBlurIntensity = 36;
+    ApplyVehicleBlurPatch(false, 0);
+
+    s_bMenuWasActive = false;
+    s_nMenuLastPage = 0;
 
     g_PlayerKnockOffBike.clear();
     g_PlayerFireProof.clear();

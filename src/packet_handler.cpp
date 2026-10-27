@@ -6,11 +6,6 @@
 #include "utils.h"
 #include "water_zones.h"
 
-#include <RakHook/rakhook.hpp>
-#include <RakNet/BitStream.h>
-#include <RakNet/NetworkTypes.h>
-#include <RakNet/PacketEnumerations.h>
-
 #include <game_sa/CKeyGen.h>
 #include <game_sa/CPed.h>
 
@@ -571,6 +566,129 @@ bool OnReceivePacket(Packet* p)
 		break;
 	}
 
+	case EXTENDEDGAME_ACTION_TOGGLE_NIGHT_VISION: {
+		uint8_t enable = 0;
+		if (bs.Read(enable)) {
+			game_extensions::ToggleNightVision(enable != 0);
+			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_TOGGLE_NIGHT_VISION: enable={}", enable));
+		}
+		break;
+	}
+
+	case EXTENDEDGAME_ACTION_TOGGLE_THERMAL_VISION: {
+		uint8_t enable = 0;
+		if (bs.Read(enable)) {
+			game_extensions::ToggleThermalVision(enable != 0);
+			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_TOGGLE_THERMAL_VISION: enable={}", enable));
+		}
+		break;
+	}
+
+	case EXTENDEDGAME_ACTION_SET_NO_RELOAD: {
+		uint8_t enable = 0;
+		if (bs.Read(enable)) {
+			game_extensions::SetNoReload(enable != 0);
+			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_SET_NO_RELOAD: enable={}", enable));
+		}
+		break;
+	}
+
+	case EXTENDEDGAME_ACTION_TOGGLE_SWITCH_RELOAD: {
+		uint8_t enable = 1;
+		if (bs.Read(enable)) {
+			game_extensions::ToggleSwitchReload(enable != 0);
+			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_TOGGLE_SWITCH_RELOAD: enable={}", enable));
+		}
+		break;
+	}
+
+	case EXTENDEDGAME_ACTION_TOGGLE_QUICK_RELOAD: {
+		uint8_t enable = 0;
+		if (bs.Read(enable)) {
+			game_extensions::ToggleQuickReload(enable != 0);
+			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_TOGGLE_QUICK_RELOAD: enable={}", enable));
+		}
+		break;
+	}
+
+	case EXTENDEDGAME_ACTION_TOGGLE_INFINITE_OXYGEN: {
+		uint8_t enable = 0;
+		if (bs.Read(enable)) {
+			game_extensions::ToggleInfiniteOxygen(enable != 0);
+			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_TOGGLE_INFINITE_OXYGEN: enable={}", enable));
+		}
+		break;
+	}
+
+	case EXTENDEDGAME_ACTION_SET_PLAYER_PED_ANIMS: {
+		uint16_t targetId = 0;
+		uint8_t mode = 0;
+		if (bs.Read(targetId) && bs.Read(mode)) {
+			game_extensions::SetPlayerPedAnims(targetId, mode);
+			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_SET_PLAYER_PED_ANIMS: targetId={}, mode={}", targetId, mode));
+		}
+		break;
+	}
+
+	case EXTENDEDGAME_ACTION_TOGGLE_CURSOR: {
+		uint8_t enable = 0;
+		if (bs.Read(enable)) {
+			game_extensions::TogglePlayerCursor(enable != 0);
+			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_TOGGLE_CURSOR: enable={}", enable));
+		}
+		break;
+	}
+
+	case EXTENDEDGAME_ACTION_SET_PLANE_RADAR_COLOR: {
+		uint32_t color = 0xFFFFFFFF;
+		if (bs.Read(color)) {
+			game_extensions::SetPlaneRadarColor(color);
+			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_SET_PLANE_RADAR_COLOR: color=0x{:08X}", color));
+		}
+		break;
+	}
+
+	case EXTENDEDGAME_ACTION_SET_SUN_COLOR: {
+		uint32_t core = 0xFFFFFFFF, corona = 0xFFFFFFFF;
+		if (bs.Read(core) && bs.Read(corona)) {
+			game_extensions::SetSunColor(core, corona);
+			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_SET_SUN_COLOR: core=0x{:08X}, corona=0x{:08X}", core, corona));
+		}
+		break;
+	}
+
+	case EXTENDEDGAME_ACTION_RESET_SUN_COLOR: {
+		game_extensions::ResetSunColor();
+		ClientLog(LogLevel::Info, "EXTENDEDGAME_ACTION_RESET_SUN_COLOR");
+		break;
+	}
+
+	case EXTENDEDGAME_ACTION_SET_MOON_COLOR: {
+		uint32_t color = 0xFFFFFFFF;
+		if (bs.Read(color)) {
+			game_extensions::SetMoonColor(color);
+			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_SET_MOON_COLOR: color=0x{:08X}", color));
+		}
+		break;
+	}
+
+	case EXTENDEDGAME_ACTION_RESET_MOON_COLOR: {
+		game_extensions::ResetMoonColor();
+		ClientLog(LogLevel::Info, "EXTENDEDGAME_ACTION_RESET_MOON_COLOR");
+		break;
+	}
+
+	case EXTENDEDGAME_ACTION_TOGGLE_VEHICLE_BLUR: {
+		uint8_t enable = 0;
+		uint8_t intensity = 36;
+		if (bs.Read(enable)) {
+			bs.Read(intensity);
+			game_extensions::ToggleVehicleBlur(enable != 0, intensity);
+			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_TOGGLE_VEHICLE_BLUR: enable={}, intensity={}", enable, intensity));
+		}
+		break;
+	}
+
 	default:
 		break;
 	}
@@ -685,6 +803,29 @@ void SendHandshakePong(uint32_t challenge)
 
 	bool bSuccess = rakhook::send(&bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0);
 	ClientLog(LogLevel::Info, std::format("SendHandshakePong: packet sent (challenge=0x{:X}, version=0x{:X}, success={})", challenge, version, bSuccess ? "true" : "false"));
+}
+
+bool SendPauseMenuEvent(uint8_t eventType, uint8_t fromPage, uint8_t toPage)
+{
+	if (!g_bHooked || !rakhook::initialized || !rakhook::orig) return false;
+	if (!rakhook::orig->IsConnected()) return false;
+
+	RakNet::BitStream bs;
+	uint8_t packetId = EXTENDEDGAME_PACKET_ID;
+	uint16_t targetId = CJ_LOCAL_PLAYER_ID;
+	uint8_t actionId = EXTENDEDGAME_ACTION_PAUSE_MENU_EVENT;
+
+	bs.Write(packetId);
+	bs.Write(targetId);
+	bs.Write(actionId);
+	bs.Write(eventType);
+	bs.Write(fromPage);
+	bs.Write(toPage);
+
+	bool bSuccess = rakhook::send(&bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0);
+	ClientLog(LogLevel::Debug, std::format("SendPauseMenuEvent: type={}, from={}, to={}, success={}",
+		eventType, fromPage, toPage, bSuccess));
+	return bSuccess;
 }
 
 void Process()

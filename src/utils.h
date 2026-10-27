@@ -73,6 +73,7 @@ uint16_t GetLocalPlayerId();
 
 CPed* GetGamePed(uint16_t playerId);
 bool IsLocalPlayerPed(CPed* pPed);
+uint16_t GetPedPlayerId(CPed* pPed);
 
 struct AccessoryBackup {
 	bool hasAccessories = false;

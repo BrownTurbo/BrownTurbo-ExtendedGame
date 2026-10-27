@@ -73,6 +73,60 @@ uint32_t GetPlayerHUDComponents();
 void SetPlayerHUDComponentsColour(uint32_t hudComponents, uint32_t intColour);
 uint32_t GetPlayerHUDComponentColour(uint32_t hudComponent);
 
+// Vision controls
+void ToggleNightVision(bool enable);
+bool IsNightVisionEnabled();
+
+void ToggleThermalVision(bool enable);
+bool IsThermalVisionEnabled();
+
+// Weapon reload mechanics
+void SetNoReload(bool enable);
+bool IsNoReloadEnabled();
+
+void ToggleSwitchReload(bool enable);
+bool IsSwitchReloadEnabled();
+
+void ToggleQuickReload(bool enable);
+bool IsQuickReloadEnabled();
+
+// Physics & movement controls
+void ToggleInfiniteOxygen(bool enable);
+bool IsInfiniteOxygenEnabled();
+
+void SetPlayerPedAnims(uint16_t playerId, uint8_t mode);
+uint8_t GetPlayerPedAnims(uint16_t playerId);
+
+void TogglePlayerCursor(bool enable);
+bool IsPlayerCursorEnabled();
+
+// Plane radar altimeter color
+void SetPlaneRadarColor(uint32_t color);
+void SetPlaneRadarColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+uint32_t GetPlaneRadarColor();
+void GetPlaneRadarColor(uint8_t& r, uint8_t& g, uint8_t& b, uint8_t& a);
+
+// Sun color settings (hexadecimal RGBA)
+void SetSunColor(uint32_t coreColor, uint32_t coronaColor);
+void ResetSunColor();
+bool IsSunColorSet();
+uint32_t GetSunCoreColor();
+uint32_t GetSunCoronaColor();
+
+// Moon color settings (hexadecimal RGBA)
+void SetMoonColor(uint32_t color);
+void ResetMoonColor();
+bool IsMoonColorSet();
+uint32_t GetMoonColor();
+
+// Vehicle speed blur motion toggle
+void ToggleVehicleBlur(bool enable, uint8_t intensity = 36);
+bool IsVehicleBlurEnabled();
+uint8_t GetVehicleBlurIntensity();
+
+// Pause menu tracking
+bool IsLocalPlayerInPauseMenu();
+
 // Reset when client disconnects
 void ClearAllStates();
 

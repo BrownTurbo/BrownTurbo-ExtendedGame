@@ -1,19 +1,6 @@
-# BrownTurbo-ExtendedGame (v0.0.1 Alpha)
-
-A high-performance **SA-MP (San Andreas Multiplayer)** client ASI plugin and server framework written in C++23 and Pawn using:
-- **[plugin-sdk](https://github.com/DK22Pac/plugin-sdk)** for low-level GTA:SA engine manipulation (`CClothes`, `CPedClothesDesc`, `CClothesBuilder`, `CPlayerPed`, `CStats`, `CKeyGen`).
-- **[samp-api](https://github.com/LUCHARE/SAMP-API)** for native SA-MP structures and multi-version ped pool resolution (`0.3.7-R1`, `0.3.7-R3-1`, `0.3.7-R5-1`, `0.3.DL-1`).
-- **[rakhook](https://github.com/katursis/rakhook)** for seamless RakNet network packet hooking.
+# BrownTurbo-ExtendedGame
 
 **BrownTurbo-ExtendedGame** is designed as an extensible game expansion framework for SA-MP, bringing singleplayer gameplay mechanics, advanced character customization, and extended features into multiplayer.
-
-The **v0.0.1 Alpha** release introduces:
-1. **Full Singleplayer CJ Customization**: Full control over Carl Johnson (Model ID 0)—including clothes, haircuts, hats, sunglasses, chains/necklaces, watches, shoes, tattoos, and real-time body morphing (Fat & Muscle)—controlled remotely via **RakNet Packet ID 252**.
-2. **Crash-Free Model 0 Engine**: Dynamically constructs composite ped clumps on remote civilian peds, resolving the notorious SA-MP Skin 0 crash bug.
-3. **Server-Side Authoritative Synchronization**: Complete stream-in synchronization engine with automatic ALS callback hooks (`OnPlayerStreamIn`, `OnPlayerSpawn`, `OnPlayerDisconnect`).
-4. **Plugin Presence Handshake**: Bidirectional client/server verification (`OnPlayerExtendedGameCheck`, `HasPlayerExtendedGame`) with safe skin fallbacks to protect vanilla players.
-
----
 
 ## Features
 
@@ -249,6 +236,106 @@ Destroys an active custom water zone and frees its slot.
 |---|---|---|
 | `zoneId` | `uint16_t` | Zone slot ID (`0..127`) |
 
+#### 44. `EXTENDEDGAME_ACTION_SET_JETPACK_OFFSET` (0x2C)
+Sets the 3D attachment translation offsets and rotation for the player's jetpack.
+| Field | Type | Description |
+|---|---|---|
+| `offsetX`, `offsetY`, `offsetZ` | `float` | Positional offsets |
+| `rotAngle` | `float` | Rotation angle in degrees |
+| `rotAxisX`, `rotAxisY`, `rotAxisZ` | `float` | Rotation axis vector components |
+
+#### 45. `EXTENDEDGAME_ACTION_RESET_JETPACK_OFFSET` (0x2D)
+Resets jetpack placement and orientation to default GTA:SA coordinates. *(No payload)*
+
+#### 46. `EXTENDEDGAME_ACTION_TOGGLE_NIGHT_VISION` (0x2E)
+Toggles green night vision post-processing filter.
+| Field | Type | Description |
+|---|---|---|
+| `toggle` | `uint8_t` | `1` = Enable, `0` = Disable |
+
+#### 47. `EXTENDEDGAME_ACTION_TOGGLE_THERMAL_VISION` (0x2F)
+Toggles infrared/heat-seeking thermal vision filter.
+| Field | Type | Description |
+|---|---|---|
+| `toggle` | `uint8_t` | `1` = Enable, `0` = Disable |
+
+#### 48. `EXTENDEDGAME_ACTION_SET_NO_RELOAD` (0x30)
+Disables ammo decrement on weapon firing (infinite clip / no reload required).
+| Field | Type | Description |
+|---|---|---|
+| `toggle` | `uint8_t` | `1` = No reload, `0` = Normal reload |
+
+#### 49. `EXTENDEDGAME_ACTION_TOGGLE_SWITCH_RELOAD` (0x31)
+Enables or disables auto-reloading when quickly switching away and back to a weapon.
+| Field | Type | Description |
+|---|---|---|
+| `toggle` | `uint8_t` | `1` = Switch reload enabled, `0` = Disabled |
+
+#### 50. `EXTENDEDGAME_ACTION_TOGGLE_QUICK_RELOAD` (0x32)
+Instantly finishes weapon reload animation so the weapon is ready to fire immediately.
+| Field | Type | Description |
+|---|---|---|
+| `toggle` | `uint8_t` | `1` = Instant reload, `0` = Normal reload animation |
+
+#### 51. `EXTENDEDGAME_ACTION_TOGGLE_INFINITE_OXYGEN` (0x33)
+Grants infinite lung capacity while swimming underwater.
+| Field | Type | Description |
+|---|---|---|
+| `toggle` | `uint8_t` | `1` = Infinite breath, `0` = Normal oxygen consumption |
+
+#### 52. `EXTENDEDGAME_ACTION_SET_PLAYER_PED_ANIMS` (0x34)
+Switches CJ ped movement animations: CJ walk/run vs standard ped locomotion for Model 0.
+| Field | Type | Description |
+|---|---|---|
+| `targetId` | `uint16_t` | Target player ID |
+| `mode` | `uint8_t` | `1` = Force CJ locomotion, `2` = Force standard ped locomotion |
+
+#### 53. `EXTENDEDGAME_ACTION_TOGGLE_CURSOR` (0x35)
+Toggles the client mouse cursor.
+| Field | Type | Description |
+|---|---|---|
+| `toggle` | `uint8_t` | `1` = Show cursor, `0` = Hide cursor |
+
+#### 54. `EXTENDEDGAME_ACTION_SET_PLANE_RADAR_COLOR` (0x36)
+Sets custom color tint for the plane radar altimeter artificial horizon line using a 32-bit hexadecimal color (`0xRRGGBBAA`).
+| Field | Type | Description |
+|---|---|---|
+| `color` | `uint32_t` | Hexadecimal color in `0xRRGGBBAA` format |
+
+#### 55. `EXTENDEDGAME_ACTION_PAUSE_MENU_EVENT` (0x37)
+Sent by client ASI to server when the player opens, closes, or navigates submenus in the pause menu.
+| Field | Type | Description |
+|---|---|---|
+| `eventType` | `uint8_t` | `1` = Open, `2` = Close, `3` = Submenu transition |
+| `fromPage` | `uint8_t` | Previous pause menu page ID |
+| `toPage` | `uint8_t` | Current pause menu page ID |
+
+#### 56. `EXTENDEDGAME_ACTION_SET_SUN_COLOR` (0x38)
+Overrides the game timecycle sun core and corona RGB colors.
+| Field | Type | Description |
+|---|---|---|
+| `coreColor` | `uint32_t` | Sun core hexadecimal color (`0xRRGGBBAA`) |
+| `coronaColor` | `uint32_t` | Sun corona flare hexadecimal color (`0xRRGGBBAA`) |
+
+#### 57. `EXTENDEDGAME_ACTION_RESET_SUN_COLOR` (0x39)
+Restores native weather timecycle sun coloring. *(No payload)*
+
+#### 58. `EXTENDEDGAME_ACTION_SET_MOON_COLOR` (0x3A)
+Overrides the moon texture and corona sprite colors.
+| Field | Type | Description |
+|---|---|---|
+| `color` | `uint32_t` | Moon hexadecimal color (`0xRRGGBBAA`) |
+
+#### 59. `EXTENDEDGAME_ACTION_RESET_MOON_COLOR` (0x3B)
+Restores native moon coloring. *(No payload)*
+
+#### 60. `EXTENDEDGAME_ACTION_TOGGLE_VEHICLE_BLUR` (0x3C)
+Toggles high-speed motion blur for vehicles (which was disabled in SA-MP) and sets its intensity.
+| Field | Type | Description |
+|---|---|---|
+| `enable` | `uint8_t` | `1` = Enable speed motion blur, `0` = Disable |
+| `intensity` | `uint8_t` | Blur alpha intensity (0..255, default: `36`) |
+
 ---
 
 ## Clothes Slot Reference
@@ -459,9 +546,59 @@ GetWaterZoneLevel(zoneId, level);
 
 // Destroy custom water zone
 DestroyWaterZone(zoneId);
+
+// --- Vision Controls ---
+ToggleNightVision(playerid, true);
+ToggleThermalVision(playerid, false);
+
+// --- Weapon Reload Mechanics ---
+SetPlayerNoReload(playerid, true);           // Infinite magazine clip
+TogglePlayerSwitchReload(playerid, false);   // Disable weapon switch auto-reload
+ToggleQuickReloadForPlayer(playerid, true);  // Instant reload animation
+
+// --- Physics & Movement ---
+TogglePlayerInfiniteOxygen(playerid, true);  // Infinite underwater breath
+SetPlayerPedAnims(playerid, false);          // Disable CJ walk/run anims (standard ped anims)
+TogglePlayerCursor(playerid, true);          // Show cursor
+
+// --- Plane Radar Altimeter Color (Hexadecimal 0xRRGGBBAA) ---
+SetPlaneRadarColor(playerid, 0x00FFFFFF);      // Cyan altimeter horizon line
+SetPlaneRadarColorForAll(0xFF0000FF);          // Red altimeter for all players
+
+// --- Sun Color Overrides (Hexadecimal 0xRRGGBBAA) ---
+SetPlayerSunColor(playerid, 0xFF2020FF, 0xFF8800AA); // Red core, orange corona
+ResetPlayerSunColor(playerid);                       // Restore default timecycle sun
+SetSunColorForAll(0xFFFF00FF, 0xFFA500FF);           // Set gold sun for all players
+ResetSunColorForAll();
+
+// --- Moon Color Overrides (Hexadecimal 0xRRGGBBAA) ---
+SetPlayerMoonColor(playerid, 0xFF2020FF);      // Blood moon
+ResetPlayerMoonColor(playerid);                // Restore default moon
+SetMoonColorForAll(0x4080FFFF);                // Blue moon for all players
+ResetMoonColorForAll();
+
+// --- Vehicle Motion Blur (Restored in SA-MP) ---
+TogglePlayerVehicleBlur(playerid, true, 36);   // Enable speed motion blur (intensity 0..255)
+ToggleVehicleBlurForAll(true, 50);             // Enable motion blur for all players
+
+// --- Pause Menu Tracking Callbacks ---
+public OnPlayerOpenPauseMenu(playerid) {
+    printf("Player %d opened the pause menu.", playerid);
+    return 1;
+}
+
+public OnPlayerClosePauseMenu(playerid) {
+    printf("Player %d closed the pause menu.", playerid);
+    return 1;
+}
+
+public OnPlayerEnterPauseSubmenu(playerid, from, to) {
+    printf("Player %d moved in pause menu from page %d to %d.", playerid, from, to);
+    return 1;
+}
 ```
 
-See [`pawn/extendedgame_example.pwn`](pawn/extendedgame_example.pwn) for a complete working filterscript with commands (`/shirt`, `/pants`, `/shoes`, `/hair`, `/glasses`, `/hat`, `/body`, `/tattoo`, `/outfit`, `/bare`, `/clearcache`, `/myoutfit`, `/checkplugin`, `/setcj`, `/airlimit`, `/jetlimit`, `/bikerule`, `/fireproof`, `/sprint`, `/sun`, `/moon`, `/stars`, `/lowclouds`, `/fluffyclouds`, `/rainbow`, `/hud`, `/hudcol`, `/tdhelp`, `/tdcreate`, `/tdrotate`, `/tdspin`, `/tdreset`, `/tddestroy`, `/ptdcreate`, `/ptdrotate`, `/ptdspin`, `/ptdreset`, `/ptddestroy`, `/wzcreate`, `/wzlevel`, `/wzdestroy`).
+See [`pawn/extendedgame_example.pwn`](pawn/extendedgame_example.pwn) for a complete working filterscript with commands (`/shirt`, `/pants`, `/shoes`, `/hair`, `/glasses`, `/hat`, `/body`, `/tattoo`, `/outfit`, `/bare`, `/clearcache`, `/myoutfit`, `/checkplugin`, `/setcj`, `/airlimit`, `/jetlimit`, `/bikerule`, `/fireproof`, `/sprint`, `/sun`, `/moon`, `/stars`, `/lowclouds`, `/fluffyclouds`, `/rainbow`, `/hud`, `/hudcol`, `/tdhelp`, `/tdcreate`, `/tdrotate`, `/tdspin`, `/tdreset`, `/tddestroy`, `/ptdcreate`, `/ptdrotate`, `/ptdspin`, `/ptdreset`, `/ptddestroy`, `/wzcreate`, `/wzlevel`, `/wzdestroy`, `/nv`, `/tv`, `/noreload`, `/switchreload`, `/quickreload`, `/oxygen`, `/pedanims`, `/cursor`, `/planeradar`, `/suncolor`, `/resetsuncolor`, `/mooncolor`, `/resetmooncolor`, `/vehicleblur`, `/hudwanted`, `/hudradio`, `/hudclock`, `/ispause`).
 
 ---
 
@@ -480,15 +617,11 @@ See [`pawn/extendedgame_example.pwn`](pawn/extendedgame_example.pwn) for a compl
 - CMake (>= 3.23)
 - Visual Studio 2022 / 2026 Build Tools (with C++ Desktop workload and x86 compiler)
 
-### Build Commands
+### Build
 ```powershell
 # Generate Visual Studio 32-bit project
 cmake -B build -A Win32
 
 # Compile Release binary
 cmake --build build --config Release
-```
-The compiled plugin will be placed at:
-```
-bin/Release/brownturbo-extendedgame.asi
 ```

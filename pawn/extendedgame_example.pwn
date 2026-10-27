@@ -94,6 +94,23 @@ stock sscanf_custom(const input[], cmd[], params[]) {
     params[j] = '\0';
 }
 
+stock ParseColorHex(const str[]) {
+    new i = 0;
+    while (str[i] == ' ') i++;
+    if (str[i] == '0' && (str[i+1] == 'x' || str[i+1] == 'X')) i += 2;
+    else if (str[i] == '#') i++;
+    new digits = 0, value = 0;
+    while (str[i] != '\0' && str[i] != ' ') {
+        new c = str[i++];
+        if (c >= '0' && c <= '9') { value = (value << 4) | (c - '0'); digits++; }
+        else if (c >= 'a' && c <= 'f') { value = (value << 4) | (c - 'a' + 10); digits++; }
+        else if (c >= 'A' && c <= 'F') { value = (value << 4) | (c - 'A' + 10); digits++; }
+        else break;
+    }
+    if (digits == 6) value = (value << 8) | 0xFF; // Auto append full alpha if 6 hex digits given
+    return value;
+}
+
 stock bool:sscanf_two_strings(const params[], s1[], s2[]) {
     new i = 0, j = 0;
     while (params[i] == ' ') i++;
@@ -1189,5 +1206,244 @@ public OnPlayerCommandText(playerid, cmdtext[]) {
         return 1;
     }
 
+    // --- Vision Commands ---
+    if (!strcmp(cmd, "/nv", true)) {
+        new bool:toggle = !GetPlayerNightVision(playerid);
+        ToggleNightVision(playerid, toggle);
+        new msg[128];
+        format(msg, sizeof(msg), "[ExtendedGame] Night Vision %s.", toggle ? "Enabled" : "Disabled");
+        SendClientMessage(playerid, 0x00FF00AA, msg);
+        return 1;
+    }
+
+    if (!strcmp(cmd, "/tv", true)) {
+        new bool:toggle = !GetPlayerThermalVision(playerid);
+        ToggleThermalVision(playerid, toggle);
+        new msg[128];
+        format(msg, sizeof(msg), "[ExtendedGame] Thermal Vision %s.", toggle ? "Enabled" : "Disabled");
+        SendClientMessage(playerid, 0x00FF00AA, msg);
+        return 1;
+    }
+
+    // --- Weapon Reload Commands ---
+    if (!strcmp(cmd, "/noreload", true)) {
+        new bool:toggle = !GetPlayerNoReload(playerid);
+        SetPlayerNoReload(playerid, toggle);
+        new msg[128];
+        format(msg, sizeof(msg), "[ExtendedGame] Weapon No-Reload %s.", toggle ? "Enabled" : "Disabled");
+        SendClientMessage(playerid, 0x00FF00AA, msg);
+        return 1;
+    }
+
+    if (!strcmp(cmd, "/switchreload", true)) {
+        new bool:toggle = !GetPlayerSwitchReload(playerid);
+        TogglePlayerSwitchReload(playerid, toggle);
+        new msg[128];
+        format(msg, sizeof(msg), "[ExtendedGame] Switch Reload (auto-reload on weapon switch) %s.", toggle ? "Enabled" : "Disabled");
+        SendClientMessage(playerid, 0x00FF00AA, msg);
+        return 1;
+    }
+
+    if (!strcmp(cmd, "/quickreload", true)) {
+        new bool:toggle = !GetPlayerQuickReload(playerid);
+        ToggleQuickReloadForPlayer(playerid, toggle);
+        new msg[128];
+        format(msg, sizeof(msg), "[ExtendedGame] Quick Reload %s.", toggle ? "Enabled" : "Disabled");
+        SendClientMessage(playerid, 0x00FF00AA, msg);
+        return 1;
+    }
+
+    // --- Physics & Movement Commands ---
+    if (!strcmp(cmd, "/oxygen", true)) {
+        new bool:toggle = !GetPlayerInfiniteOxygen(playerid);
+        TogglePlayerInfiniteOxygen(playerid, toggle);
+        new msg[128];
+        format(msg, sizeof(msg), "[ExtendedGame] Infinite Oxygen %s.", toggle ? "Enabled" : "Disabled");
+        SendClientMessage(playerid, 0x00FF00AA, msg);
+        return 1;
+    }
+
+    if (!strcmp(cmd, "/pedanims", true)) {
+        new curr = GetPlayerPedAnims(playerid);
+        new bool:toggle = (curr != 1);
+        SetPlayerPedAnims(playerid, toggle);
+        new msg[144];
+        format(msg, sizeof(msg), "[ExtendedGame] CJ Ped Walk/Run Animations %s for all players.", toggle ? "Enabled (CJ moves like CJ)" : "Disabled (CJ moves like normal ped)");
+        SendClientMessage(playerid, 0x00FF00AA, msg);
+        return 1;
+    }
+
+    if (!strcmp(cmd, "/cursor", true)) {
+        new bool:toggle = !GetCursorState(playerid);
+        TogglePlayerCursor(playerid, toggle);
+        new msg[128];
+        format(msg, sizeof(msg), "[ExtendedGame] Player Cursor %s.", toggle ? "Enabled" : "Disabled");
+        SendClientMessage(playerid, 0x00FF00AA, msg);
+        return 1;
+    }
+
+    // --- Plane Radar Color Command (Hexadecimal 0xRRGGBBAA) ---
+    if (!strcmp(cmd, "/planeradar", true)) {
+        new color = 0xFFFFFFFF;
+        if (params[0] != '\0') {
+            if (!strcmp(params, "red", true)) {
+                color = 0xFF0000FF;
+            } else if (!strcmp(params, "green", true)) {
+                color = 0x00FF00FF;
+            } else if (!strcmp(params, "blue", true)) {
+                color = 0x0080FFFF;
+            } else if (!strcmp(params, "yellow", true)) {
+                color = 0xFFFF00FF;
+            } else if (!strcmp(params, "reset", true)) {
+                color = 0xFFFFFFFF;
+            } else {
+                color = ParseColorHex(params);
+            }
+        }
+        SetPlaneRadarColor(playerid, color);
+        new msg[144];
+        format(msg, sizeof(msg), "[ExtendedGame] Plane radar altimeter color set to 0x%08x.", color);
+        SendClientMessage(playerid, 0x00FF00AA, msg);
+        SendClientMessage(playerid, 0xFFFF00AA, "Usage: /planeradar <0xRRGGBBAA | red | green | blue | yellow | reset>");
+        return 1;
+    }
+
+    // --- Sun Color Commands ---
+    if (!strcmp(cmd, "/suncolor", true)) {
+        if (params[0] == '\0') {
+            SendClientMessage(playerid, 0xFFFF00AA, "Usage: /suncolor <hexCore> [hexCorona]  (e.g. /suncolor 0xFF0000FF, /suncolor red, blood, gold)");
+            return 1;
+        }
+        new p1[32], p2[32];
+        new coreColor = 0xFFFFFFFF, coronaColor = 0xFFFFFFFF;
+        if (sscanf_two_strings(params, p1, p2)) {
+            coreColor = ParseColorHex(p1);
+            coronaColor = ParseColorHex(p2);
+        } else {
+            if (!strcmp(params, "red", true)) {
+                coreColor = 0xFF2020FF; coronaColor = 0xFF6000AA;
+            } else if (!strcmp(params, "blood", true)) {
+                coreColor = 0xFF0000FF; coronaColor = 0x880000FF;
+            } else if (!strcmp(params, "gold", true)) {
+                coreColor = 0xFFFF00FF; coronaColor = 0xFFA500FF;
+            } else if (!strcmp(params, "blue", true)) {
+                coreColor = 0x0088FFFF; coronaColor = 0x00FFFF88;
+            } else if (!strcmp(params, "green", true)) {
+                coreColor = 0x00FF00FF; coronaColor = 0x88FF0088;
+            } else if (!strcmp(params, "purple", true)) {
+                coreColor = 0xAA00FFAA; coronaColor = 0xFF00FFAA;
+            } else {
+                coreColor = ParseColorHex(params);
+                coronaColor = coreColor;
+            }
+        }
+        SetPlayerSunColor(playerid, coreColor, coronaColor);
+        new msg[144];
+        format(msg, sizeof(msg), "[ExtendedGame] Sun color set to Core: 0x%08x, Corona: 0x%08x.", coreColor, coronaColor);
+        SendClientMessage(playerid, 0x00FF00AA, msg);
+        return 1;
+    }
+
+    if (!strcmp(cmd, "/resetsuncolor", true)) {
+        ResetPlayerSunColor(playerid);
+        SendClientMessage(playerid, 0x00FF00AA, "[ExtendedGame] Sun color restored to default game timecycle.");
+        return 1;
+    }
+
+    // --- Moon Color Commands ---
+    if (!strcmp(cmd, "/mooncolor", true)) {
+        if (params[0] == '\0') {
+            SendClientMessage(playerid, 0xFFFF00AA, "Usage: /mooncolor <0xRRGGBBAA | red | blood | blue | green | yellow | white>");
+            return 1;
+        }
+        new color = 0xFFFFFFFF;
+        if (!strcmp(params, "red", true) || !strcmp(params, "blood", true)) {
+            color = 0xFF2020FF;
+        } else if (!strcmp(params, "blue", true)) {
+            color = 0x4080FFFF;
+        } else if (!strcmp(params, "green", true)) {
+            color = 0x40FF40FF;
+        } else if (!strcmp(params, "yellow", true)) {
+            color = 0xFFFF40FF;
+        } else if (!strcmp(params, "white", true)) {
+            color = 0xFFFFFFFF;
+        } else {
+            color = ParseColorHex(params);
+        }
+        SetPlayerMoonColor(playerid, color);
+        new msg[144];
+        format(msg, sizeof(msg), "[ExtendedGame] Moon color set to 0x%08x.", color);
+        SendClientMessage(playerid, 0x00FF00AA, msg);
+        return 1;
+    }
+
+    if (!strcmp(cmd, "/resetmooncolor", true)) {
+        ResetPlayerMoonColor(playerid);
+        SendClientMessage(playerid, 0x00FF00AA, "[ExtendedGame] Moon color restored to default.");
+        return 1;
+    }
+
+    // --- Vehicle Motion Blur Command ---
+    if (!strcmp(cmd, "/vehicleblur", true)) {
+        new currentIntensity = 36;
+        new bool:enabled = GetPlayerVehicleBlur(playerid, currentIntensity);
+        new bool:newToggle = !enabled;
+        new intensity = (params[0] != '\0') ? strval(params) : 36;
+        if (intensity <= 0 || intensity > 255) intensity = 36;
+        TogglePlayerVehicleBlur(playerid, newToggle, intensity);
+        new msg[144];
+        if (newToggle) {
+            format(msg, sizeof(msg), "[ExtendedGame] Vehicle motion blur ENABLED (intensity: %d). Drive fast in a vehicle to see the effect!", intensity);
+            SendClientMessage(playerid, 0x00FF00AA, msg);
+        } else {
+            SendClientMessage(playerid, 0xFFFF00AA, "[ExtendedGame] Vehicle motion blur DISABLED.");
+        }
+        return 1;
+    }
+
+    // --- Extended HUD Component Colors Command ---
+    if (!strcmp(cmd, "/hudwanted", true)) {
+        SetPlayerHUDComponentColor(playerid, HUD_COLOUR_WANTED, 0xFF00FFFF);
+        SendClientMessage(playerid, 0x00FF00AA, "[ExtendedGame] Wanted stars color set to Purple.");
+        return 1;
+    }
+
+    if (!strcmp(cmd, "/hudradio", true)) {
+        SetPlayerHUDComponentColor(playerid, HUD_COLOUR_RADIO, 0x00FFFFFF);
+        SetPlayerHUDComponentColor(playerid, HUD_COLOUR_RADIO_TUNING, 0xFFA500FF);
+        SendClientMessage(playerid, 0x00FF00AA, "[ExtendedGame] Radio text set to Cyan, tuning to Orange.");
+        return 1;
+    }
+
+    if (!strcmp(cmd, "/hudclock", true)) {
+        SetPlayerHUDComponentColor(playerid, HUD_COLOUR_CLOCK, 0x00FF00FF);
+        SendClientMessage(playerid, 0x00FF00AA, "[ExtendedGame] Clock text color set to Lime.");
+        return 1;
+    }
+
+    // --- Pause Menu Status Check Command ---
+    if (!strcmp(cmd, "/ispause", true)) {
+        new bool:inMenu = IsPlayerInPauseMenu(playerid);
+        new msg[128];
+        format(msg, sizeof(msg), "[ExtendedGame] You are currently %s the pause menu.", inMenu ? "INSIDE" : "NOT IN");
+        SendClientMessage(playerid, inMenu ? 0xFFFF00AA : 0x00FF00AA, msg);
+        return 1;
+    }
+
     return 0;
+}
+
+public OnPlayerOpenPauseMenu(playerid) {
+    printf("[ExtendedGame] Player %d opened the pause menu.", playerid);
+    return 1;
+}
+
+public OnPlayerClosePauseMenu(playerid) {
+    printf("[ExtendedGame] Player %d closed the pause menu.", playerid);
+    return 1;
+}
+
+public OnPlayerEnterPauseSubmenu(playerid, from, to) {
+    printf("[ExtendedGame] Player %d entered pause submenu (from %d to %d).", playerid, from, to);
+    return 1;
 }

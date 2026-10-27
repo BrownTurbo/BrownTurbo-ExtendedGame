@@ -281,6 +281,28 @@ bool IsLocalPlayerPed(CPed* pPed)
 	return pPed == FindPlayerPed(0);
 }
 
+uint16_t GetPedPlayerId(CPed* pGamePed)
+{
+	if (!pGamePed)
+		return 0xFFFF;
+	if (IsLocalPlayerPed(pGamePed))
+		return GetLocalPlayerId();
+
+	auto pool = GetPlayerPoolPtr();
+	return std::visit([pGamePed](auto&& p) -> uint16_t {
+		using T = std::decay_t<decltype(p)>;
+		if constexpr (std::is_same_v<T, std::nullptr_t>) {
+			return 0xFFFF;
+		} else {
+			if (!p) return 0xFFFF;
+			sampapi::ID id = p->Find(pGamePed);
+			if (id < 1004 && p->IsConnected(id))
+				return static_cast<uint16_t>(id);
+			return 0xFFFF;
+		}
+	}, pool);
+}
+
 void BackupAccessories(CPed* pGamePed, AccessoryBackup& backup)
 {
 	backup.hasAccessories = false;

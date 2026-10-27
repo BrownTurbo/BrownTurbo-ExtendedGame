@@ -78,6 +78,37 @@ enum eExtendedGameAction : uint8_t {
 	// Actions 44..45: Jetpack Placement & Orientation
 	EXTENDEDGAME_ACTION_SET_JETPACK_OFFSET        = 44, // float posX, float posY, float posZ, float rotAngle, float rotAxisX, float rotAxisY, float rotAxisZ
 	EXTENDEDGAME_ACTION_RESET_JETPACK_OFFSET      = 45, // reset to default offset and rotation
+
+	// Actions 46..47: Vision Toggles
+	EXTENDEDGAME_ACTION_TOGGLE_NIGHT_VISION       = 46, // uint8_t enable (0 or 1)
+	EXTENDEDGAME_ACTION_TOGGLE_THERMAL_VISION     = 47, // uint8_t enable (0 or 1)
+
+	// Actions 48..50: Weapon Reload Mechanics
+	EXTENDEDGAME_ACTION_SET_NO_RELOAD             = 48, // uint8_t enable (0 or 1)
+	EXTENDEDGAME_ACTION_TOGGLE_SWITCH_RELOAD      = 49, // uint8_t enable (0 or 1)
+	EXTENDEDGAME_ACTION_TOGGLE_QUICK_RELOAD       = 50, // uint8_t enable (0 or 1)
+
+	// Actions 51..53: Physics & Movement
+	EXTENDEDGAME_ACTION_TOGGLE_INFINITE_OXYGEN    = 51, // uint8_t enable (0 or 1)
+	EXTENDEDGAME_ACTION_SET_PLAYER_PED_ANIMS      = 52, // uint16_t playerId, uint8_t mode (0=default, 1=ped, 2=player)
+	EXTENDEDGAME_ACTION_TOGGLE_CURSOR             = 53, // uint8_t enable (0 or 1)
+
+	// Action 54: Plane Radar Altimeter Color (Hexadecimal RGBA)
+	EXTENDEDGAME_ACTION_SET_PLANE_RADAR_COLOR     = 54, // uint32_t color (0xRRGGBBAA)
+
+	// Action 55: Pause Menu Event (Client -> Server)
+	EXTENDEDGAME_ACTION_PAUSE_MENU_EVENT          = 55, // uint8_t eventType (1=open, 2=close, 3=submenu), uint8_t fromPage, uint8_t toPage
+
+	// Actions 56..57: Sun Color Settings (Hexadecimal RGBA)
+	EXTENDEDGAME_ACTION_SET_SUN_COLOR             = 56, // uint32_t coreColor, uint32_t coronaColor
+	EXTENDEDGAME_ACTION_RESET_SUN_COLOR           = 57, // no payload
+
+	// Actions 58..59: Moon Color Settings (Hexadecimal RGBA)
+	EXTENDEDGAME_ACTION_SET_MOON_COLOR            = 58, // uint32_t color (0xRRGGBBAA)
+	EXTENDEDGAME_ACTION_RESET_MOON_COLOR          = 59, // no payload
+
+	// Action 60: Vehicle Speed Blur Motion Toggle
+	EXTENDEDGAME_ACTION_TOGGLE_VEHICLE_BLUR       = 60, // uint8_t enable (0 or 1), uint8_t intensity (default 36)
 };
 
 // HUD Components Bitmask
@@ -90,7 +121,31 @@ constexpr uint32_t HUD_COMPONENT_RADAR        = 32;
 constexpr uint32_t HUD_COMPONENT_CROSSHAIR    = 64;
 constexpr uint32_t HUD_COMPONENT_MONEY        = 128;
 constexpr uint32_t HUD_COMPONENT_LASERDOT     = 256;
-constexpr uint32_t HUD_COMPONENT_ALL          = 0x1FF; // 511
+constexpr uint32_t HUD_COMPONENT_WANTED       = 512;
+constexpr uint32_t HUD_COMPONENT_RADIO        = 1024;
+constexpr uint32_t HUD_COMPONENT_RADIO_TUNING = 2048;
+constexpr uint32_t HUD_COMPONENT_CLOCK        = 4096;
+constexpr uint32_t HUD_COMPONENT_ALL          = 0x1FFF; // 8191
+
+// Pause Menu Event Types
+constexpr uint8_t PAUSE_MENU_EVENT_OPEN       = 1;
+constexpr uint8_t PAUSE_MENU_EVENT_CLOSE      = 2;
+constexpr uint8_t PAUSE_MENU_EVENT_SUBMENU    = 3;
+
+// Pause Menu Pages (FrontEndMenuManager page IDs)
+constexpr uint8_t PAUSE_MENU_PAGE_STATS       = 0;
+constexpr uint8_t PAUSE_MENU_PAGE_START_GAME  = 1;
+constexpr uint8_t PAUSE_MENU_PAGE_BRIEF       = 2;
+constexpr uint8_t PAUSE_MENU_PAGE_AUDIO       = 3;
+constexpr uint8_t PAUSE_MENU_PAGE_DISPLAY     = 4;
+constexpr uint8_t PAUSE_MENU_PAGE_MAP         = 5;
+constexpr uint8_t PAUSE_MENU_PAGE_LANGUAGE    = 28;
+constexpr uint8_t PAUSE_MENU_PAGE_OPTIONS     = 33;
+constexpr uint8_t PAUSE_MENU_PAGE_QUIT        = 35;
+constexpr uint8_t PAUSE_MENU_PAGE_CONTROLS    = 36;
+constexpr uint8_t PAUSE_MENU_PAGE_REDEFINE    = 37;
+constexpr uint8_t PAUSE_MENU_PAGE_MOUSE       = 39;
+constexpr uint8_t PAUSE_MENU_PAGE_MAIN        = 41;
 
 // Bike Knock Off States (CPed::CantBeKnockedOffBike)
 constexpr uint8_t BIKE_KNOCK_OFF_DEFAULT = 0; // Default GTA:SA behavior
