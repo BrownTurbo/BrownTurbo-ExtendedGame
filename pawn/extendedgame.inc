@@ -3146,7 +3146,7 @@ stock EXTG_TextDrawDestroy(Text:text) {
 #define TextDrawDestroy EXTG_TextDrawDestroy
 
 // 9. Hook PlayerTextDrawDestroy: Auto-reset rotation state when player textdraw is destroyed
-stock EXTGAME::PlayerTextDrawDestroy(playerid, PlayerText:text) {
+stock EXTG_PlayerTextDrawDestroy(playerid, PlayerText:text) {
     if (_:text >= 0 && _:text < MAX_PLAYER_TEXT_DRAWS) {
         ResetPlayerTextDrawRotation(playerid, text);
     }
@@ -3157,7 +3157,7 @@ stock EXTGAME::PlayerTextDrawDestroy(playerid, PlayerText:text) {
 #else
     #define _ALS_PlayerTextDrawDestroy
 #endif
-#define PlayerTextDrawDestroy EXTGAME::PlayerTextDrawDestroy
+#define PlayerTextDrawDestroy EXTG_PlayerTextDrawDestroy
 
 // 10. Hook TextDrawShowForPlayer: Auto-sync rotation when textdraw is shown
 stock EXTG_TextDrawShowForPlayer(playerid, Text:text) {
@@ -3204,7 +3204,7 @@ stock EXTG_TextDrawShowForAll(Text:text) {
 #define TextDrawShowForAll EXTG_TextDrawShowForAll
 
 // 12. Hook PlayerTextDrawShow: Auto-sync rotation when player textdraw is shown
-stock EXTGAME::PlayerTextDrawShow(playerid, PlayerText:text) {
+stock EXTG_PlayerTextDrawShow(playerid, PlayerText:text) {
     new ret = PlayerTextDrawShow(playerid, text);
     if (playerid >= 0 && playerid < MAX_PLAYERS && _:text >= 0 && _:text < MAX_PLAYER_TEXT_DRAWS) {
         if (EXTGAME::PlayerTextDrawRotation[playerid][_:text][tdRotEnabled]) {
@@ -3223,4 +3223,4 @@ stock EXTGAME::PlayerTextDrawShow(playerid, PlayerText:text) {
 #else
     #define _ALS_PlayerTextDrawShow
 #endif
-#define PlayerTextDrawShow EXTGAME::PlayerTextDrawShow
+#define PlayerTextDrawShow EXTG_PlayerTextDrawShow
