@@ -2923,9 +2923,7 @@ public OnIncomingPacket(playerid, packetid, BitStream:bs) {
 
                 if (!wasInstalled) {
                     printf("[ExtendedGame] Player %d confirmed BrownTurbo-ExtendedGame ASI (version 0x%04x).", playerid, version);
-                    new cbDeferred[] = "_DeferredSyncPlayerExtendedGame";
-                    new fmtI[] = "i";
-                    SetTimerEx(cbDeferred, 50, false, fmtI, playerid);
+                    SetTimerEx("_DeferredSyncPlayerExtendedGame", 50, false, "i", playerid);
 
                     CallLocalFunction("OnPlayerExtendedGameCheck", "iii", playerid, true, version);
                 }
@@ -3059,9 +3057,7 @@ static stock _InitPlayerExtendedGame(playerid) {
 
     // Send handshake ping to detect ASI plugin presence
     CheckPlayerExtendedGame(playerid, 0);
-    new cbTimeout[] = "EXTG_OnPlayerPluginTimeout";
-    new fmtI[] = "i";
-    SetTimerEx(cbTimeout, 6000, false, fmtI, playerid);
+    SetTimerEx("EXTG_OnPlayerPluginTimeout", 6000, false, "i", playerid);
 }
 
 public OnPlayerConnect(playerid) {
