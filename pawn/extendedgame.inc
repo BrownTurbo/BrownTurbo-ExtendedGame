@@ -36,7 +36,7 @@
 #define CJ_ACTION_HANDSHAKE_PONG        (12) // Client responds to confirm ASI plugin presence & version
 #define CJ_ACTION_HANDSHAKE_ACK         (13) // Server acknowledges handshake; confirms communication channel active
 
-// ExtendedGame Gameplay & Environment Actions (UG:MP Parity)
+// ExtendedGame Gameplay & Environment Actions
 #define EXTENDEDGAME_ACTION_SET_AIRCRAFT_HEIGHT_LIMIT (20)
 #define EXTENDEDGAME_ACTION_SET_JETPACK_HEIGHT_LIMIT  (21)
 #define EXTENDEDGAME_ACTION_SET_BIKE_KNOCK_OFF        (22)
@@ -45,14 +45,14 @@
 #define EXTENDEDGAME_ACTION_SET_SUN             (25)
 // Actions 26 and 27 are reserved.
 
-// ExtendedGame Sky & Environment Controls (UG:MP Parity)
+// ExtendedGame Sky & Environment Controls
 #define EXTENDEDGAME_ACTION_TOGGLE_MOON               (28)
 #define EXTENDEDGAME_ACTION_TOGGLE_STARS              (29)
 #define EXTENDEDGAME_ACTION_TOGGLE_LOW_CLOUDS         (30)
 #define EXTENDEDGAME_ACTION_TOGGLE_FLUFFY_CLOUDS      (31)
 #define EXTENDEDGAME_ACTION_TOGGLE_RAINBOW            (32)
 
-// ExtendedGame HUD Component Controls (UG:MP Parity)
+// ExtendedGame HUD Component Controls
 #define EXTENDEDGAME_ACTION_TOGGLE_HUD_COMPONENTS     (33)
 #define EXTENDEDGAME_ACTION_SET_HUD_COMPONENTS_COLOUR (34)
 #define EXTENDEDGAME_ACTION_SET_WATER_LEVEL           (35)
@@ -137,7 +137,7 @@ static stock EXTGAME::GlobalTextDrawRotation[MAX_TEXT_DRAWS][E_EXTG_TD_ROTATION]
 static stock EXTGAME::ActiveTextDrawRotationsCount = 0;
 static stock EXTGAME::PlayerTextDrawRotation[MAX_PLAYERS][MAX_PLAYER_TEXT_DRAWS][E_EXTG_TD_ROTATION];
 
-// HUD Component Defines (UG:MP Parity & ASCM Extended)
+// HUD Component Defines
 #define HUD_COMPONENT_AMMO                  1
 #define HUD_COMPONENT_WEAPONICON            2
 #define HUD_COMPONENT_HEALTH                4
@@ -1000,7 +1000,7 @@ stock ClearPlayerCJCache(playerid, targetid) {
 
 /*
  * =============================================================================
- * ExtendedGame Gameplay & Environmental Controls (UG:MP Parity)
+ * ExtendedGame Gameplay & Environmental Controls
  * =============================================================================
  */
 
