@@ -8,8 +8,8 @@ set(PLUGIN_NAME "brownturbo-extendedgame")
 set(PLUGIN_VERSION_MAJOR 0)
 set(PLUGIN_VERSION_MINOR 0)
 set(PLUGIN_VERSION_PATCH 1)
-set(PLUGIN_VERSION_BUILD 1)
-set(PLUGIN_PHASE "alpha")
+set(PLUGIN_VERSION_BUILD 8)
+set(PLUGIN_PHASE "beta")
 #==============================================================================#
 project(${PLUGIN_NAME} LANGUAGES C CXX VERSION ${PLUGIN_VERSION_MAJOR}.${PLUGIN_VERSION_MINOR}.${PLUGIN_VERSION_BUILD})
 
