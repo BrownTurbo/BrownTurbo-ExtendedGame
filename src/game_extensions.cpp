@@ -276,70 +276,209 @@ static void keep_byte(uintptr_t address, bool targetState, bool& currentState) {
     }
 }
 
-static void ApplyNoReloadPatch(bool enable) {
-    plugin::patch::SetUChar(0x7428AF, enable ? 0x90 : 0x48);
+// Real callees of the hooked CALL sites (captured at install time, never assumed)
+static uintptr_t s_dwOrigWanted = 0, s_dwOrigRadio = 0, s_dwOrigRadioTuning = 0, s_dwOrigClock = 0;
+static uintptr_t s_dwOrigMoonA = 0, s_dwOrigMoonB = 0;
+
+// Resolves the callee of an `E8 rel32` call site (0 if the site is not a CALL).
+static uintptr_t ResolveCallTarget(uintptr_t site)
+{
+	if (*reinterpret_cast<uint8_t*>(site) != 0xE8)
+		return 0;
+	return site + 5 + *reinterpret_cast<int32_t*>(site + 1);
 }
 
-static void ApplySwitchReloadPatch(bool enable) {
-    static const uint8_t origBytes[6] = { 0x89, 0x88, 0xA8, 0x05, 0x00, 0x00 };
-    static const uint8_t nopBytes[6]  = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
-    plugin::patch::SetRaw(0x60B4FA, const_cast<uint8_t*>(enable ? origBytes : nopBytes), 6);
+static bool HookCallSite(uintptr_t site, void* thunk, uintptr_t& origTarget, const char* name)
+{
+	if (origTarget)
+		return true;
+	const uintptr_t target = ResolveCallTarget(site);
+	if (!target) {
+		const uint8_t* b = reinterpret_cast<const uint8_t*>(site);
+		ClientLog(LogLevel::Warning, std::format("HookCallSite({}): 0x{:08X} is not a CALL ({:02X} {:02X} {:02X} {:02X} {:02X}), skipping", name, site, unsigned(b[0]), unsigned(b[1]), unsigned(b[2]), unsigned(b[3]), unsigned(b[4])));
+		return false;
+	}
+	origTarget = target;
+	plugin::patch::RedirectCall(site, thunk);
+	ClientLog(LogLevel::Info, std::format("HookCallSite({}): 0x{:08X} original callee = 0x{:08X}", name, site, target));
+	return true;
 }
 
-static void ApplyPlaneRadarColorPatch(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-    plugin::patch::SetUInt(0x58A4FF, static_cast<uint32_t>(a));
-    plugin::patch::SetUInt(0x58A506, static_cast<uint32_t>(b));
-    plugin::patch::SetUInt(0x58A50D, static_cast<uint32_t>(g));
-    plugin::patch::SetUInt(0x58A514, static_cast<uint32_t>(r));
+static void UnhookCallSite(uintptr_t site, uintptr_t& origTarget)
+{
+	if (!origTarget)
+		return;
+	plugin::patch::RedirectCall(site, reinterpret_cast<void*>(origTarget));
+	origTarget = 0;
+}
+
+// Swaps `len` bytes at `addr` from -> to, only if the live bytes are exactly `from`
+// (same guard idiom as InstallPedAnimsHook). Already being in the target state is a silent no-op.
+static bool SwapBytes(uintptr_t addr, const uint8_t* from, const uint8_t* to, size_t len, const char* name)
+{
+	const void* live = reinterpret_cast<const void*>(addr);
+	if (memcmp(live, to, len) == 0)
+		return true;
+	if (memcmp(live, from, len) != 0) {
+		ClientLog(LogLevel::Warning, std::format("{}: unexpected bytes at 0x{:08X}, skipping", name, addr));
+		return false;
+	}
+	plugin::patch::SetRaw(addr, const_cast<uint8_t*>(to), len);
+	return true;
+}
+
+static bool IsReadableMemory(const void* p, size_t len)
+{
+	MEMORY_BASIC_INFORMATION mbi {};
+	if (!VirtualQuery(p, &mbi, sizeof(mbi)) || mbi.State != MEM_COMMIT)
+		return false;
+	if (mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS))
+		return false;
+	return reinterpret_cast<uintptr_t>(p) + len <= reinterpret_cast<uintptr_t>(mbi.BaseAddress) + mbi.RegionSize;
+}
+
+static bool IsOnCurrentStack(const void* p)
+{
+	const NT_TIB* tib = reinterpret_cast<const NT_TIB*>(NtCurrentTeb());
+	return p >= tib->StackLimit && p < tib->StackBase;
 }
 
 static const uint8_t g_origSunMoves[6][4] = {
-    { 0x66, 0x89, 0x46, 0x30 }, // 0x55F9B2: mov [esi+30h], ax
-    { 0x66, 0x89, 0x46, 0x32 }, // 0x55F9DD: mov [esi+32h], ax
-    { 0x66, 0x89, 0x46, 0x34 }, // 0x55FA08: mov [esi+34h], ax
-    { 0x66, 0x89, 0x46, 0x36 }, // 0x55FA33: mov [esi+36h], ax
-    { 0x66, 0x89, 0x46, 0x38 }, // 0x55FA5E: mov [esi+38h], ax
-    { 0x66, 0x89, 0x46, 0x3A }  // 0x55FA8D: mov [esi+3Ah], ax
+	{ 0x66, 0x89, 0x46, 0x30 }, // 0x55F9B2: mov [esi+30h], ax
+	{ 0x66, 0x89, 0x46, 0x32 }, // 0x55F9DD: mov [esi+32h], ax
+	{ 0x66, 0x89, 0x46, 0x34 }, // 0x55FA08: mov [esi+34h], ax
+	{ 0x66, 0x89, 0x46, 0x36 }, // 0x55FA33: mov [esi+36h], ax
+	{ 0x66, 0x89, 0x46, 0x38 }, // 0x55FA5E: mov [esi+38h], ax
+	{ 0x66, 0x89, 0x46, 0x3A } // 0x55FA8D: mov [esi+3Ah], ax
 };
 static const uintptr_t g_sunMoveAddrs[6] = {
-    0x55F9B2, 0x55F9DD, 0x55FA08, 0x55FA33, 0x55FA5E, 0x55FA8D
+	0x55F9B2, 0x55F9DD, 0x55FA08, 0x55FA33, 0x55FA5E, 0x55FA8D
 };
 
-static void ApplySunColorPatch(bool enable) {
-    static const uint8_t nop4[4] = { 0x90, 0x90, 0x90, 0x90 };
-    for (int i = 0; i < 6; ++i) {
-        plugin::patch::SetRaw(g_sunMoveAddrs[i], const_cast<uint8_t*>(enable ? nop4 : g_origSunMoves[i]), 4);
-    }
+static void ApplyNoReloadPatch(bool enable)
+{
+	static const uint8_t orig[1] = { 0x48 };
+	static const uint8_t nop[1] = { 0x90 };
+	SwapBytes(0x7428AF, enable ? orig : nop, enable ? nop : orig, sizeof(orig), "NoReload");
 }
 
-static void ApplyVehicleBlurPatch(bool enable, uint8_t intensity) {
-    static const uint8_t callBytes[5] = { 0xE8, 0x11, 0xE2, 0xFF, 0xFF };
-    static const uint8_t nopBytes[5]  = { 0x90, 0x90, 0x90, 0x90, 0x90 };
-    plugin::patch::SetRaw(0x704E8A, const_cast<uint8_t*>(enable ? callBytes : nopBytes), 5);
-    *reinterpret_cast<int32_t*>(0x8D5104) = enable ? (intensity > 0 ? static_cast<int32_t>(intensity) : 36) : 0;
+static void ApplySwitchReloadPatch(bool enable)
+{ // enable == vanilla auto-reload on weapon switch
+	static const uint8_t orig[6] = { 0x89, 0x88, 0xA8, 0x05, 0x00, 0x00 };
+	static const uint8_t nop[6] = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
+	SwapBytes(0x60B4FA, enable ? nop : orig, enable ? orig : nop, sizeof(orig), "SwitchReload");
+}
+
+static void ApplyPlaneRadarColorPatch(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
+	static const uintptr_t kOperands[4] = { 0x58A4FF, 0x58A506, 0x58A50D, 0x58A514 }; // a, b, g, r
+	static bool s_bPatched = false, s_bUnsupported = false;
+	if (s_bUnsupported)
+		return;
+
+	const bool isDefault = (r == 255 && g == 255 && b == 255 && a == 255);
+	if (isDefault && !s_bPatched)
+		return; // never touched: nothing to restore
+
+	if (!s_bPatched) { // first write: every operand must still be the vanilla imm32 0xFF
+		for (uintptr_t addr : kOperands) {
+			if (*reinterpret_cast<uint32_t*>(addr) != 0xFFu) {
+				ClientLog(LogLevel::Warning, std::format("ApplyPlaneRadarColorPatch: unexpected operand at 0x{:08X}, feature disabled", addr));
+				s_bUnsupported = true;
+				return;
+			}
+		}
+	}
+	plugin::patch::SetUInt(0x58A4FF, static_cast<uint32_t>(a));
+	plugin::patch::SetUInt(0x58A506, static_cast<uint32_t>(b));
+	plugin::patch::SetUInt(0x58A50D, static_cast<uint32_t>(g));
+	plugin::patch::SetUInt(0x58A514, static_cast<uint32_t>(r));
+	s_bPatched = !isDefault;
+}
+
+static void ApplySunColorPatch(bool enable)
+{ // enable == NOP the six timecycle sun stores
+	static const uint8_t nop4[4] = { 0x90, 0x90, 0x90, 0x90 };
+	for (int i = 0; i < 6; ++i) {
+		SwapBytes(g_sunMoveAddrs[i], enable ? g_origSunMoves[i] : nop4, enable ? nop4 : g_origSunMoves[i], 4, "SunColor");
+	}
+}
+
+static void ApplyVehicleBlurPatch(bool enable, uint8_t intensity)
+{
+	static const uint8_t callBytes[5] = { 0xE8, 0x11, 0xE2, 0xFF, 0xFF };
+	static const uint8_t nopBytes[5] = { 0x90, 0x90, 0x90, 0x90, 0x90 };
+	static int32_t s_nBlurIntensityOrig = -1; // captured the first time we touch the intensity
+	int32_t* pIntensity = reinterpret_cast<int32_t*>(0x8D5104);
+
+	if (!SwapBytes(0x704E8A, enable ? nopBytes : callBytes, enable ? callBytes : nopBytes, sizeof(callBytes), "VehicleBlur"))
+		return;
+
+	if (enable) {
+		if (s_nBlurIntensityOrig < 0)
+			s_nBlurIntensityOrig = *pIntensity;
+		*pIntensity = intensity > 0 ? static_cast<int32_t>(intensity) : 36;
+	} else if (s_nBlurIntensityOrig >= 0) {
+		*pIntensity = s_nBlurIntensityOrig; // was: unconditional write of 0
+	}
 }
 
 // Detour for CSprite::RenderOneXLUSprite calls in CClouds::Render (0x713C4C and 0x713D02) to tint the Moon
-static void __cdecl MoonSpriteRenderHook(float x, float y, float z, float halfWidth, float halfHeight,
-    uint8_t red, uint8_t green, uint8_t blue, int16_t alpha, float rhw,
-    uint8_t intensity, uint8_t udir, uint8_t vdir)
-{
-    if (g_bMoonColorSet) {
-        uint8_t mR = static_cast<uint8_t>((g_nMoonColor >> 24) & 0xFF);
-        uint8_t mG = static_cast<uint8_t>((g_nMoonColor >> 16) & 0xFF);
-        uint8_t mB = static_cast<uint8_t>((g_nMoonColor >> 8) & 0xFF);
-        uint8_t mA = static_cast<uint8_t>(g_nMoonColor & 0xFF);
+static bool s_bMoonHooked = false;
 
-        red   = static_cast<uint8_t>((static_cast<uint32_t>(red)   * mR) / 255);
-        green = static_cast<uint8_t>((static_cast<uint32_t>(green) * mG) / 255);
-        blue  = static_cast<uint8_t>((static_cast<uint32_t>(blue)  * mB) / 255);
-        if (mA < 255) {
-            alpha = static_cast<int16_t>((static_cast<int32_t>(alpha) * mA) / 255);
-        }
-    }
-    reinterpret_cast<void(__cdecl*)(float, float, float, float, float, uint8_t, uint8_t, uint8_t, int16_t, float, uint8_t, uint8_t, uint8_t)>(0x70D000)(
-        x, y, z, halfWidth, halfHeight, red, green, blue, alpha, rhw, intensity, udir, vdir
-    );
+static void __cdecl TintMoonArgs(uint32_t* pArgs)
+{
+	if (!g_bMoonColorSet)
+		return;
+	const uint32_t mR = (g_nMoonColor >> 24) & 0xFF;
+	const uint32_t mG = (g_nMoonColor >> 16) & 0xFF;
+	const uint32_t mB = (g_nMoonColor >> 8) & 0xFF;
+	const uint32_t mA = g_nMoonColor & 0xFF;
+
+	pArgs[5] = (pArgs[5] & ~0xFFu) | (((pArgs[5] & 0xFF) * mR) / 255);
+	pArgs[6] = (pArgs[6] & ~0xFFu) | (((pArgs[6] & 0xFF) * mG) / 255);
+	pArgs[7] = (pArgs[7] & ~0xFFu) | (((pArgs[7] & 0xFF) * mB) / 255);
+	if (mA < 255) {
+		const int32_t a = static_cast<int16_t>(pArgs[8] & 0xFFFF);
+		pArgs[8] = (pArgs[8] & ~0xFFFFu) | static_cast<uint16_t>((a * static_cast<int32_t>(mA)) / 255);
+	}
+}
+
+__declspec(naked) static void MoonSpriteRenderHook()
+{
+	__asm {
+        pushad
+        lea eax, [esp + 36] // 32 bytes of pushad + return address -> first argument
+        push eax
+        call TintMoonArgs
+        add esp, 4
+        popad
+        jmp dword ptr [s_dwOrigMoonA]
+	}
+}
+
+static void InstallMoonHook()
+{
+	if (s_bMoonHooked)
+		return;
+	const uintptr_t a = ResolveCallTarget(0x713C4C);
+	const uintptr_t b = ResolveCallTarget(0x713D02);
+	if (!a || a != b) {
+		ClientLog(LogLevel::Warning, std::format("InstallMoonHook: unexpected call sites (0x{:08X} / 0x{:08X}), skipping", a, b));
+		return;
+	}
+	HookCallSite(0x713C4C, reinterpret_cast<void*>(&MoonSpriteRenderHook), s_dwOrigMoonA, "Moon A");
+	HookCallSite(0x713D02, reinterpret_cast<void*>(&MoonSpriteRenderHook), s_dwOrigMoonB, "Moon B");
+	s_bMoonHooked = true;
+}
+
+static void RemoveMoonHook()
+{
+	if (!s_bMoonHooked)
+		return;
+	UnhookCallSite(0x713C4C, s_dwOrigMoonA);
+	UnhookCallSite(0x713D02, s_dwOrigMoonB);
+	s_bMoonHooked = false;
 }
 
 // Ped Animations check hook (0x609A1F)
@@ -408,81 +547,117 @@ static void RemovePedAnimsHook() {
 }
 
 // Extended HUD Colour thunks (Wanted: 0x58DDD4, Radio Tuned: 0x4E9F9C, Radio Tuning: 0x4E9FB2, Clock: 0x58EBD5)
-static void __cdecl OverrideHudColor(uint32_t colorValue, uint8_t* pRgba) {
-    if (colorValue == 0 || !pRgba) return;
-    pRgba[0] = static_cast<uint8_t>((colorValue >> 24) & 0xFF);
-    pRgba[1] = static_cast<uint8_t>((colorValue >> 16) & 0xFF);
-    pRgba[2] = static_cast<uint8_t>((colorValue >> 8) & 0xFF);
-    uint8_t a = static_cast<uint8_t>(colorValue & 0xFF);
-    if (a != 0) pRgba[3] = a;
-}
+static uint8_t s_aHudScratchWanted[4], s_aHudScratchRadio[4], s_aHudScratchRadioTuning[4], s_aHudScratchClock[4];
+static uint8_t* __cdecl ResolveHudColor(uint32_t colorValue, uint8_t* pRgba, uint8_t* pScratch)
+{
+	if (colorValue == 0 || !pRgba)
+		return pRgba;
+	if (!IsReadableMemory(pRgba, 4)) {
+		static bool s_bWarned = false;
+		if (!s_bWarned) {
+			s_bWarned = true;
+			ClientLog(LogLevel::Warning, std::format("ResolveHudColor: callee returned 0x{:08X}, not a CRGBA* (returns by value?) - override skipped", reinterpret_cast<uintptr_t>(pRgba)));
+		}
+		return pRgba;
+	}
 
+	uint8_t* pOut = pRgba;
+	if (!IsOnCurrentStack(pRgba)) { // static table / heap: shared with other users, never write through it
+		memcpy(pScratch, pRgba, 4);
+		pOut = pScratch;
+		static bool s_bLoggedShared = false;
+		if (!s_bLoggedShared) {
+			s_bLoggedShared = true;
+			ClientLog(LogLevel::Info, std::format("ResolveHudColor: callee returned shared pointer 0x{:08X}, using scratch copy", reinterpret_cast<uintptr_t>(pRgba)));
+		}
+	}
+
+	pOut[0] = static_cast<uint8_t>((colorValue >> 24) & 0xFF);
+	pOut[1] = static_cast<uint8_t>((colorValue >> 16) & 0xFF);
+	pOut[2] = static_cast<uint8_t>((colorValue >> 8) & 0xFF);
+	uint8_t a = static_cast<uint8_t>(colorValue & 0xFF);
+	if (a != 0)
+		pOut[3] = a;
+	return pOut;
+}
 static uint32_t s_dwRetWanted = 0;
-__declspec(naked) static void ThunkWantedColour() {
-    __asm {
+__declspec(naked) static void ThunkWantedColour()
+{
+	__asm {
         pop s_dwRetWanted
-        mov edx, 0x58FEE0
-        call edx
-        pushad
+        call dword ptr [s_dwOrigWanted]
+        push ecx
+        push edx
+        push offset s_aHudScratchWanted
         push eax
         push g_HUDColours.wantedColor
-        call OverrideHudColor
-        add esp, 8
-        popad
+        call ResolveHudColor
+        add esp, 12
+        pop edx
+        pop ecx
         push s_dwRetWanted
         ret
-    }
+	}
 }
 
 static uint32_t s_dwRetRadio = 0;
-__declspec(naked) static void ThunkRadioColour() {
-    __asm {
+__declspec(naked) static void ThunkRadioColour()
+{
+	__asm {
         pop s_dwRetRadio
-        mov edx, 0x58FEE0
-        call edx
-        pushad
+        call dword ptr [s_dwOrigRadio]
+        push ecx
+        push edx
+        push offset s_aHudScratchRadio
         push eax
         push g_HUDColours.radioColor
-        call OverrideHudColor
-        add esp, 8
-        popad
+        call ResolveHudColor
+        add esp, 12
+        pop edx
+        pop ecx
         push s_dwRetRadio
         ret
-    }
+	}
 }
 
 static uint32_t s_dwRetRadioTuning = 0;
-__declspec(naked) static void ThunkRadioTuningColour() {
-    __asm {
+__declspec(naked) static void ThunkRadioTuningColour()
+{
+	__asm {
         pop s_dwRetRadioTuning
-        mov edx, 0x58FEE0
-        call edx
-        pushad
+        call dword ptr [s_dwOrigRadioTuning]
+        push ecx
+        push edx
+        push offset s_aHudScratchRadioTuning
         push eax
         push g_HUDColours.radioTuningColor
-        call OverrideHudColor
-        add esp, 8
-        popad
+        call ResolveHudColor
+        add esp, 12
+        pop edx
+        pop ecx
         push s_dwRetRadioTuning
         ret
-    }
+	}
 }
 
 static uint32_t s_dwRetClock = 0;
-__declspec(naked) static void ThunkClockColour() {
-    __asm {
+__declspec(naked) static void ThunkClockColour()
+{
+	__asm {
         pop s_dwRetClock
-        mov edx, 0x58FEE0
-        call edx
-        pushad
+        call dword ptr [s_dwOrigClock]
+        push ecx
+        push edx
+        push offset s_aHudScratchClock
         push eax
         push g_HUDColours.clockColor
-        call OverrideHudColor
-        add esp, 8
-        popad
+        call ResolveHudColor
+        add esp, 12
+        pop edx
+        pop ecx
         push s_dwRetClock
         ret
-    }
+	}
 }
 
 static void ApplyAircraftHeightLimitOperandPointers() {
@@ -1019,17 +1194,7 @@ bool Initialize() {
     JETPACK_ROT_AXIS   = g_vecJetpackRotAxis;
     plugin::patch::SetFloat(0x67EB01, g_fJetpackRotAngle);
 
-    // Install extended HUD color thunks
-    plugin::patch::RedirectCall(0x58DDD4, reinterpret_cast<void*>(&ThunkWantedColour));
-    plugin::patch::RedirectCall(0x4E9F9C, reinterpret_cast<void*>(&ThunkRadioColour));
-    plugin::patch::RedirectCall(0x4E9FB2, reinterpret_cast<void*>(&ThunkRadioTuningColour));
-    plugin::patch::RedirectCall(0x58EBD5, reinterpret_cast<void*>(&ThunkClockColour));
-
-    // Install Moon Sprite Render hook (CClouds::Render calls to CSprite::RenderOneXLUSprite)
-    plugin::patch::RedirectCall(0x713C4C, reinterpret_cast<void*>(&MoonSpriteRenderHook));
-    plugin::patch::RedirectCall(0x713D02, reinterpret_cast<void*>(&MoonSpriteRenderHook));
-
-    // Install Ped Animations hook
+	// Install Ped Animations hook
     InstallPedAnimsHook();
 
     EnsureJetpackLoaded();
@@ -1395,16 +1560,15 @@ void Shutdown() {
     MH_DisableHook(reinterpret_cast<void*>(0x58E020));
 
     // Restore extended HUD color redirects
-    plugin::patch::RedirectCall(0x58DDD4, reinterpret_cast<void*>(0x58FEE0));
-    plugin::patch::RedirectCall(0x4E9F9C, reinterpret_cast<void*>(0x58FEE0));
-    plugin::patch::RedirectCall(0x4E9FB2, reinterpret_cast<void*>(0x58FEE0));
-    plugin::patch::RedirectCall(0x58EBD5, reinterpret_cast<void*>(0x58FEE0));
+	UnhookCallSite(0x58DDD4, s_dwOrigWanted);
+	UnhookCallSite(0x4E9F9C, s_dwOrigRadio);
+	UnhookCallSite(0x4E9FB2, s_dwOrigRadioTuning);
+	UnhookCallSite(0x58EBD5, s_dwOrigClock);
 
-    // Restore moon redirects
-    plugin::patch::RedirectCall(0x713C4C, reinterpret_cast<void*>(0x70D000));
-    plugin::patch::RedirectCall(0x713D02, reinterpret_cast<void*>(0x70D000));
+	// Restore moon redirects
+	RemoveMoonHook();
 
-    // Remove ped animations hook
+	// Remove ped animations hook
     RemovePedAnimsHook();
 
     // Restore reload patches
@@ -1772,18 +1936,26 @@ void SetPlayerHUDComponentsColour(uint32_t hudComponents, uint32_t intColour) {
         g_HUDColours.laserDotColor = intColour;
         ApplyLaserDotColorPatch(intColour);
     }
-    if (hudComponents & HUD_COMPONENT_WANTED) {
-        g_HUDColours.wantedColor = intColour;
-    }
-    if (hudComponents & HUD_COMPONENT_RADIO) {
-        g_HUDColours.radioColor = intColour;
-    }
-    if (hudComponents & HUD_COMPONENT_RADIO_TUNING) {
-        g_HUDColours.radioTuningColor = intColour;
-    }
-    if (hudComponents & HUD_COMPONENT_CLOCK) {
-        g_HUDColours.clockColor = intColour;
-    }
+	if (hudComponents & HUD_COMPONENT_WANTED) {
+		g_HUDColours.wantedColor = intColour;
+		if (intColour != 0)
+			HookCallSite(0x58DDD4, reinterpret_cast<void*>(&ThunkWantedColour), s_dwOrigWanted, "HUD wanted");
+	}
+	if (hudComponents & HUD_COMPONENT_RADIO) {
+		g_HUDColours.radioColor = intColour;
+		if (intColour != 0)
+			HookCallSite(0x4E9F9C, reinterpret_cast<void*>(&ThunkRadioColour), s_dwOrigRadio, "HUD radio");
+	}
+	if (hudComponents & HUD_COMPONENT_RADIO_TUNING) {
+		g_HUDColours.radioTuningColor = intColour;
+		if (intColour != 0)
+			HookCallSite(0x4E9FB2, reinterpret_cast<void*>(&ThunkRadioTuningColour), s_dwOrigRadioTuning, "HUD radio tuning");
+	}
+	if (hudComponents & HUD_COMPONENT_CLOCK) {
+		g_HUDColours.clockColor = intColour;
+		if (intColour != 0)
+			HookCallSite(0x58EBD5, reinterpret_cast<void*>(&ThunkClockColour), s_dwOrigClock, "HUD clock");
+	}
 }
 
 uint32_t GetPlayerHUDComponentColour(uint32_t hudComponent) {
@@ -1909,19 +2081,22 @@ uint32_t GetSunCoreColor() { return g_nSunCoreColor; }
 uint32_t GetSunCoronaColor() { return g_nSunCoronaColor; }
 
 // Moon color settings (hexadecimal RGBA)
-void SetMoonColor(uint32_t color) {
-    if (color == 0 || color == 0xFFFFFFFF) {
-        g_bMoonColorSet = false;
-        g_nMoonColor = 0xFFFFFFFF;
-    } else {
-        g_bMoonColorSet = true;
-        g_nMoonColor = color;
-    }
+void SetMoonColor(uint32_t color)
+{
+	if (color == 0 || color == 0xFFFFFFFF) {
+		ResetMoonColor();
+		return;
+	}
+	g_bMoonColorSet = true;
+	g_nMoonColor = color;
+	InstallMoonHook();
 }
 
-void ResetMoonColor() {
-    g_bMoonColorSet = false;
-    g_nMoonColor = 0xFFFFFFFF;
+void ResetMoonColor()
+{
+	g_bMoonColorSet = false;
+	g_nMoonColor = 0xFFFFFFFF;
+	RemoveMoonHook();
 }
 
 bool IsMoonColorSet() { return g_bMoonColorSet; }
@@ -2021,8 +2196,9 @@ void ClearAllStates() {
 
     g_bMoonColorSet = false;
     g_nMoonColor = 0xFFFFFFFF;
+	RemoveMoonHook();
 
-    g_bVehicleBlurEnabled = false;
+	g_bVehicleBlurEnabled = false;
     g_nVehicleBlurIntensity = 36;
     ApplyVehicleBlurPatch(false, 0);
 
