@@ -153,7 +153,7 @@ static stock EXTGAME::PlayerTextDrawRotation[MAX_PLAYERS][MAX_PLAYER_TEXT_DRAWS]
 #define HUD_COMPONENT_CLOCK                 4096
 #define HUD_COMPONENT_ALL                   (8191)
 
-// ASCM-Style HUD Component Colour Index Constants
+// HUD Component Colour Index Constants
 #define HUD_COLOUR_MONEY                    (0)
 #define HUD_COLOUR_MONEY_NEGATIVE           (1)
 #define HUD_COLOUR_ARMOUR                   (2)
@@ -2677,7 +2677,7 @@ stock bool:IsPlayerInPauseMenu(playerid) {
 
 /*
  * =============================================================================
- * ASCM-Compatible HUD Colour Functions
+ * HUD Colour Functions
  * =============================================================================
  */
 stock SetPlayerHUDComponentColor(playerid, componentid, colour) {
