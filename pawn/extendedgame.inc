@@ -3073,17 +3073,21 @@ public OnPlayerConnect(playerid) {
 #endif
 
 // 6. Hook OnFilterScriptInit: Ensure Pawn.RakNet registers this AMX and check existing connected players
-public OnFilterScriptInit() {
+#if defined FILTERSCRIPT
+public OnFilterScriptInit()
+{
     PR_Init();
-    for (new i = 0; i < MAX_PLAYERS; i++) {
-        if (IsPlayerConnected(i)) {
+    for (new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if (IsPlayerConnected(i))
+        {
             _InitPlayerExtendedGame(i);
         }
     }
     #if defined EXTG_OnFilterScriptInit
-        return EXTG_OnFilterScriptInit();
+    return EXTG_OnFilterScriptInit();
     #else
-        return 1;
+    return 1;
     #endif
 }
 #if defined _ALS_OnFilterScriptInit
@@ -3093,21 +3097,24 @@ public OnFilterScriptInit() {
 #endif
 #define OnFilterScriptInit EXTG_OnFilterScriptInit
 #if defined EXTG_OnFilterScriptInit
-    forward EXTG_OnFilterScriptInit();
+forward EXTG_OnFilterScriptInit();
 #endif
-
-// 7. Hook OnGameModeInit: Ensure Pawn.RakNet registers this AMX and check existing connected players
-public OnGameModeInit() {
+#else
+// 6. Hook OnGameModeInit: Ensure Pawn.RakNet registers this AMX and check existing connected players
+public OnGameModeInit()
+{
     PR_Init();
-    for (new i = 0; i < MAX_PLAYERS; i++) {
-        if (IsPlayerConnected(i)) {
+    for (new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if (IsPlayerConnected(i))
+        {
             _InitPlayerExtendedGame(i);
         }
     }
     #if defined EXTG_OnGameModeInit
-        return EXTG_OnGameModeInit();
+    return EXTG_OnGameModeInit();
     #else
-        return 1;
+    return 1;
     #endif
 }
 #if defined _ALS_OnGameModeInit
@@ -3117,7 +3124,8 @@ public OnGameModeInit() {
 #endif
 #define OnGameModeInit EXTG_OnGameModeInit
 #if defined EXTG_OnGameModeInit
-    forward EXTG_OnGameModeInit();
+forward EXTG_OnGameModeInit();
+#endif
 #endif
 
 // 8. Hook TextDrawDestroy: Auto-reset rotation state when textdraw is destroyed
