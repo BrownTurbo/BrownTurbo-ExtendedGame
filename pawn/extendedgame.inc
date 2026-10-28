@@ -422,7 +422,7 @@ static stock _SyncExtGameActorState(targetid, recipient)
 
 static stock _SyncPlayerExtendedGameSettings(playerid)
 {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid))
+    if (!IsPlayerConnected(playerid))
         return 0;
 
     SetAircraftHeightLimitForPlayer(playerid, EXTGAME::PlayerAircraftHeightLimit[playerid]);
@@ -537,7 +537,7 @@ forward OnPlayerExtendedGameCheck(playerid, bool:installed, version);
  * Checks if a player has the BrownTurbo-ExtendedGame ASI plugin installed
  */
 stock bool:HasPlayerExtendedGame(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    if (!IsPlayerConnected(playerid)) return false;
     return EXTGAME::PlayerHasPlugin[playerid];
 }
 
@@ -546,7 +546,7 @@ stock bool:HasPlayerExtendedGame(playerid) {
  * Returns 0 if not installed
  */
 stock GetPlayerExtendedGameVersion(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     return EXTGAME::PlayerPluginVersion[playerid];
 }
 
@@ -554,7 +554,7 @@ stock GetPlayerExtendedGameVersion(playerid) {
  * Sends an active presence-check ping to a player
  */
 stock CheckPlayerExtendedGame(playerid, challenge = 0) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
 
     new BitStream:bs = BS_New();
     BS_WriteValue(bs,
@@ -603,7 +603,7 @@ static stock _BS_WriteCJString(BitStream:bs, const string[]) {
  * Resets a player's server-side CJ outfit data
  */
 stock ResetPlayerCJData(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerCJActive[playerid] = false;
     EXTGAME::PlayerCJFat[playerid] = 0.0;
     EXTGAME::PlayerCJMuscle[playerid] = 0.0;
@@ -618,7 +618,7 @@ stock ResetPlayerCJData(playerid) {
  * Checks whether a player currently has an active custom CJ skin on the server
  */
 stock bool:IsPlayerUsingCJSkin(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    if (!IsPlayerConnected(playerid)) return false;
     return EXTGAME::PlayerCJActive[playerid];
 }
 
@@ -626,7 +626,7 @@ stock bool:IsPlayerUsingCJSkin(playerid) {
  * Retrieves a player's current CJ body stats from server memory
  */
 stock GetPlayerCJBodyStats(playerid, &Float:fat, &Float:muscle) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     fat = EXTGAME::PlayerCJFat[playerid];
     muscle = EXTGAME::PlayerCJMuscle[playerid];
     return 1;
@@ -636,7 +636,7 @@ stock GetPlayerCJBodyStats(playerid, &Float:fat, &Float:muscle) {
  * Retrieves a player's current clothes item in a specific slot from server memory
  */
 stock GetPlayerCJClothes(playerid, slot, texture[], model[], max_len = 32) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || slot < 0 || slot >= CJ_SLOT_COUNT) return 0;
+    if (!IsPlayerConnected(playerid) || slot < 0 || slot >= CJ_SLOT_COUNT) return 0;
     format(texture, max_len, "%s", EXTGAME::PlayerCJTexture[playerid][slot]);
     format(model, max_len, "%s", EXTGAME::PlayerCJModel[playerid][slot]);
     return 1;
@@ -1044,7 +1044,7 @@ stock SetAircraftHeightLimitForPlayer(playerid, Float:heightLimit) {
         return 1;
     }
 
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerAircraftHeightLimit[playerid] = heightLimit;
 
     if (IsPlayerConnected(playerid)) {
@@ -1054,7 +1054,7 @@ stock SetAircraftHeightLimitForPlayer(playerid, Float:heightLimit) {
 }
 
 stock Float:GetPlayerAircraftHeightLimit(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 800.0;
+    if (!IsPlayerConnected(playerid)) return 800.0;
     return EXTGAME::PlayerAircraftHeightLimit[playerid];
 }
 
@@ -1073,7 +1073,7 @@ stock SetJetpackHeightLimitForPlayer(playerid, Float:heightLimit) {
         return 1;
     }
 
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerJetpackHeightLimit[playerid] = heightLimit;
 
     if (IsPlayerConnected(playerid)) {
@@ -1083,7 +1083,7 @@ stock SetJetpackHeightLimitForPlayer(playerid, Float:heightLimit) {
 }
 
 stock Float:GetPlayerJetpackHeightLimit(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 100.0;
+    if (!IsPlayerConnected(playerid)) return 100.0;
     return EXTGAME::PlayerJetpackHeightLimit[playerid];
 }
 
@@ -1135,7 +1135,7 @@ stock SetJetpackOffsetForPlayer(playerid, Float:x, Float:y, Float:z) {
         return 1;
     }
 
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerJetpackOffsetX[playerid] = x;
     EXTGAME::PlayerJetpackOffsetY[playerid] = y;
     EXTGAME::PlayerJetpackOffsetZ[playerid] = z;
@@ -1147,7 +1147,7 @@ stock SetJetpackOffsetForPlayer(playerid, Float:x, Float:y, Float:z) {
 }
 
 stock GetPlayerJetpackOffset(playerid, &Float:x, &Float:y, &Float:z) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) {
+    if (!IsPlayerConnected(playerid)) {
         x = EXTGAME::GlobalJetpackOffsetX;
         y = EXTGAME::GlobalJetpackOffsetY;
         z = EXTGAME::GlobalJetpackOffsetZ;
@@ -1180,7 +1180,7 @@ stock SetJetpackRotationForPlayer(playerid, Float:angle, Float:axisX = 0.0, Floa
         return 1;
     }
 
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerJetpackRotAngle[playerid] = angle;
     EXTGAME::PlayerJetpackRotAxisX[playerid] = axisX;
     EXTGAME::PlayerJetpackRotAxisY[playerid] = axisY;
@@ -1193,7 +1193,7 @@ stock SetJetpackRotationForPlayer(playerid, Float:angle, Float:axisX = 0.0, Floa
 }
 
 stock GetPlayerJetpackRotation(playerid, &Float:angle, &Float:axisX, &Float:axisY, &Float:axisZ) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) {
+    if (!IsPlayerConnected(playerid)) {
         angle = EXTGAME::GlobalJetpackRotAngle;
         axisX = EXTGAME::GlobalJetpackRotAxisX;
         axisY = EXTGAME::GlobalJetpackRotAxisY;
@@ -1234,7 +1234,7 @@ stock ResetJetpackOffsetForPlayer(playerid) {
         return 1;
     }
 
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerJetpackOffsetX[playerid]  = 0.10;
     EXTGAME::PlayerJetpackOffsetY[playerid]  = -0.38;
     EXTGAME::PlayerJetpackOffsetZ[playerid]  = 0.00;
@@ -1254,7 +1254,7 @@ stock ResetJetpackOffsetForPlayer(playerid) {
  * knockState: BIKE_KNOCK_OFF_DEFAULT (0), BIKE_KNOCK_OFF_NEVER (1), BIKE_KNOCK_OFF_ALWAYS (2)
  */
 static stock _ApplyKnockedOffBike(playerid, knockState) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerKnockOffBike[playerid] = knockState;
 
     if (IsPlayerConnected(playerid)) {
@@ -1291,12 +1291,12 @@ stock SetPlayerKnockedOffBikeState(playerid, knockState) {
 }
 
 stock GetPlayerKnockedOffBikeState(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return BIKE_KNOCK_OFF_DEFAULT;
+    if (!IsPlayerConnected(playerid)) return BIKE_KNOCK_OFF_DEFAULT;
     return EXTGAME::PlayerKnockOffBike[playerid];
 }
 
 static stock _ApplyFireProof(playerid, enable) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerFireProof[playerid] = (enable != 0);
 
     if (IsPlayerConnected(playerid)) {
@@ -1333,12 +1333,12 @@ stock SetPlayerFireProof(playerid, enable) {
 }
 
 stock bool:IsPlayerFireProof(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    if (!IsPlayerConnected(playerid)) return false;
     return EXTGAME::PlayerFireProof[playerid];
 }
 
 static stock _ApplyInfiniteSprint(playerid, enable) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerInfiniteSprint[playerid] = (enable != 0);
 
     if (IsPlayerConnected(playerid)) {
@@ -1367,12 +1367,12 @@ stock TogglePlayerInfiniteSprint(playerid, enable) {
 }
 
 stock bool:IsPlayerInfiniteSprintEnabled(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    if (!IsPlayerConnected(playerid)) return false;
     return EXTGAME::PlayerInfiniteSprint[playerid];
 }
 
 static stock _ApplySun(playerid, enable) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerSunEnabled[playerid] = (enable != 0);
 
     if (IsPlayerConnected(playerid)) {
@@ -1401,7 +1401,7 @@ stock TogglePlayerSun(playerid, enable) {
 }
 
 stock bool:IsPlayerSunEnabled(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return true;
+    if (!IsPlayerConnected(playerid)) return true;
     return EXTGAME::PlayerSunEnabled[playerid];
 }
 
@@ -1409,7 +1409,7 @@ stock bool:IsPlayerSunEnabled(playerid) {
  * Toggles the visibility of the moon globally for all players
  */
 static stock _ApplyPlayerMoon(playerid, enable) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerMoonEnabled[playerid] = (enable != 0);
 
     if (IsPlayerConnected(playerid)) {
@@ -1442,12 +1442,12 @@ stock TogglePlayerMoon(playerid, enable) {
 }
 
 stock bool:IsPlayerMoonEnabled(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return true;
+    if (!IsPlayerConnected(playerid)) return true;
     return EXTGAME::PlayerMoonEnabled[playerid];
 }
 
 static stock _ApplyPlayerStars(playerid, enable) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerStarsEnabled[playerid] = (enable != 0);
 
     if (IsPlayerConnected(playerid)) {
@@ -1480,12 +1480,12 @@ stock TogglePlayerStars(playerid, enable) {
 }
 
 stock bool:IsPlayerStarsEnabled(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return true;
+    if (!IsPlayerConnected(playerid)) return true;
     return EXTGAME::PlayerStarsEnabled[playerid];
 }
 
 static stock _ApplyPlayerLowClouds(playerid, enable) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerLowCloudsEnabled[playerid] = (enable != 0);
 
     if (IsPlayerConnected(playerid)) {
@@ -1518,12 +1518,12 @@ stock TogglePlayerLowClouds(playerid, enable) {
 }
 
 stock bool:IsPlayerLowCloudsEnabled(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return true;
+    if (!IsPlayerConnected(playerid)) return true;
     return EXTGAME::PlayerLowCloudsEnabled[playerid];
 }
 
 static stock _ApplyPlayerFluffyClouds(playerid, enable) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerFluffyCloudsEnabled[playerid] = (enable != 0);
 
     if (IsPlayerConnected(playerid)) {
@@ -1556,12 +1556,12 @@ stock TogglePlayerFluffyClouds(playerid, enable) {
 }
 
 stock bool:IsPlayerFluffyCloudsEnabled(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return true;
+    if (!IsPlayerConnected(playerid)) return true;
     return EXTGAME::PlayerFluffyCloudsEnabled[playerid];
 }
 
 static stock _ApplyPlayerRainbow(playerid, enable) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerRainbowEnabled[playerid] = (enable != 0);
 
     if (IsPlayerConnected(playerid)) {
@@ -1594,7 +1594,7 @@ stock TogglePlayerRainbow(playerid, enable) {
 }
 
 stock bool:IsPlayerRainbowEnabled(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return true;
+    if (!IsPlayerConnected(playerid)) return true;
     return EXTGAME::PlayerRainbowEnabled[playerid];
 }
 
@@ -1603,7 +1603,7 @@ stock bool:IsPlayerRainbowEnabled(playerid) {
  * world-water controls. Outside-world water is unchanged unless requested.
  */
 static stock _ApplyPlayerWaterLevel(playerid, Float:level, bool:includeWorldNonSeaLevel, bool:includeWorldSeaLevel, bool:includeOutsideWorldLevel) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerWaterLevelSet[playerid] = true;
     EXTGAME::PlayerWaterLevel[playerid] = level;
     EXTGAME::PlayerWaterIncludeNonSea[playerid] = includeWorldNonSeaLevel;
@@ -1641,12 +1641,12 @@ stock SetPlayerWaterLevel(playerid, Float:level, bool:includeWorldNonSeaLevel = 
 }
 
 stock Float:GetPlayerWaterLevel(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0.0;
+    if (!IsPlayerConnected(playerid)) return 0.0;
     return EXTGAME::PlayerWaterLevel[playerid];
 }
 
 static stock _ApplyResetPlayerWaterLevel(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerWaterLevelSet[playerid] = false;
     EXTGAME::PlayerWaterLevel[playerid] = 0.0;
     EXTGAME::PlayerWaterIncludeNonSea[playerid] = true;
@@ -1681,7 +1681,7 @@ stock ResetPlayerWaterLevel(playerid) {
 }
 
 static stock _ApplyPlayerWaterWaveHeight(playerid, Float:height) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerWaterWaveHeight[playerid] = height;
     if (IsPlayerConnected(playerid)) {
         new BitStream:bs = BS_New();
@@ -1710,13 +1710,13 @@ stock SetPlayerWaterWaveHeight(playerid, Float:height) {
 }
 
 stock Float:GetPlayerWaterWaveHeight(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0.0;
+    if (!IsPlayerConnected(playerid)) return 0.0;
     if (EXTGAME::PlayerWaterWaveHeight[playerid] < 0.0) return 0.6;
     return EXTGAME::PlayerWaterWaveHeight[playerid];
 }
 
 static stock _ApplyTogglePlayerHUD(playerid, hudComponents) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerHUDComponents[playerid] = hudComponents;
 
     if (IsPlayerConnected(playerid)) {
@@ -1745,12 +1745,12 @@ stock TogglePlayerHUDComponents(playerid, hudComponents) {
 }
 
 stock GetPlayerHUDComponents(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return HUD_COMPONENT_ALL;
+    if (!IsPlayerConnected(playerid)) return HUD_COMPONENT_ALL;
     return EXTGAME::PlayerHUDComponents[playerid];
 }
 
 static stock _ApplyPlayerHUDColour(playerid, hudComponents, intColour) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
 
     if (hudComponents & HUD_COMPONENT_AMMO)       EXTGAME::PlayerHUDColourAmmo[playerid]       = intColour;
     if (hudComponents & HUD_COMPONENT_WEAPONICON) EXTGAME::PlayerHUDColourWeaponIcon[playerid] = intColour;
@@ -1797,7 +1797,7 @@ stock SetPlayerHUDComponentsColour(playerid, hudComponents, intColour) {
 }
 
 stock GetPlayerHUDComponentColour(playerid, hudComponent) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     switch (hudComponent) {
         case HUD_COMPONENT_AMMO:         return EXTGAME::PlayerHUDColourAmmo[playerid];
         case HUD_COMPONENT_WEAPONICON:   return EXTGAME::PlayerHUDColourWeaponIcon[playerid];
@@ -1827,7 +1827,7 @@ stock GetPlayerHUDComponentColour(playerid, hudComponent) {
  * @param spinSpeed Continuous rotation speed in degrees per second (0.0 = static angle)
  */
 stock SetTextDrawRotationForPlayer(playerid, Text:textdrawid, Float:angle, Float:pivotX = -1.0, Float:pivotY = -1.0, Float:spinSpeed = 0.0) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     if (_:textdrawid < 0 || _:textdrawid >= MAX_TEXT_DRAWS) return 0;
 
     new BitStream:bs = BS_New();
@@ -1873,7 +1873,7 @@ stock SetTextDrawRotation(Text:textdrawid, Float:angle, Float:pivotX = -1.0, Flo
  * Resets rotation of a global TextDraw for a specific player.
  */
 stock ResetTextDrawRotationForPlayer(playerid, Text:textdrawid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     if (_:textdrawid < 0 || _:textdrawid >= MAX_TEXT_DRAWS) return 0;
 
     new BitStream:bs = BS_New();
@@ -1915,7 +1915,7 @@ stock ResetTextDrawRotation(Text:textdrawid) {
  * Sets rotation and optional continuous spin animation for a Player TextDraw.
  */
 stock SetPlayerTextDrawRotation(playerid, PlayerText:textdrawid, Float:angle, Float:pivotX = -1.0, Float:pivotY = -1.0, Float:spinSpeed = 0.0) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     if (_:textdrawid < 0 || _:textdrawid >= MAX_PLAYER_TEXT_DRAWS) return 0;
 
     EXTGAME::PlayerTextDrawRotation[playerid][_:textdrawid][tdRotEnabled] = true;
@@ -1945,7 +1945,7 @@ stock SetPlayerTextDrawRotation(playerid, PlayerText:textdrawid, Float:angle, Fl
  * Resets rotation of a Player TextDraw.
  */
 stock ResetPlayerTextDrawRotation(playerid, PlayerText:textdrawid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     if (_:textdrawid < 0 || _:textdrawid >= MAX_PLAYER_TEXT_DRAWS) return 0;
 
     EXTGAME::PlayerTextDrawRotation[playerid][_:textdrawid][tdRotEnabled] = false;
@@ -1991,7 +1991,7 @@ stock GetTextDrawRotation(Text:textdrawid, &Float:angle, &Float:pivotX, &Float:p
  * Returns true if a Player TextDraw has active rotation.
  */
 stock bool:IsPlayerTextDrawRotated(playerid, PlayerText:textdrawid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return false;
+    if (!IsPlayerConnected(playerid)) return false;
     if (_:textdrawid < 0 || _:textdrawid >= MAX_PLAYER_TEXT_DRAWS) return false;
     return EXTGAME::PlayerTextDrawRotation[playerid][_:textdrawid][tdRotEnabled];
 }
@@ -2000,7 +2000,7 @@ stock bool:IsPlayerTextDrawRotated(playerid, PlayerText:textdrawid) {
  * Retrieves the Player TextDraw rotation parameters.
  */
 stock GetPlayerTextDrawRotation(playerid, PlayerText:textdrawid, &Float:angle, &Float:pivotX, &Float:pivotY, &Float:spinSpeed) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     if (_:textdrawid < 0 || _:textdrawid >= MAX_PLAYER_TEXT_DRAWS) return 0;
     angle = EXTGAME::PlayerTextDrawRotation[playerid][_:textdrawid][tdRotAngle];
     pivotX = EXTGAME::PlayerTextDrawRotation[playerid][_:textdrawid][tdRotPivotX];
@@ -2019,7 +2019,7 @@ stock GetPlayerTextDrawRotation(playerid, PlayerText:textdrawid, &Float:angle, &
  * Creates or updates a custom water zone for a specific player.
  */
 stock CreateWaterZoneForPlayer(playerid, zoneid, Float:minX, Float:minY, Float:maxX, Float:maxY, Float:level, Float:bottomZ = -100.0) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     if (zoneid < 0 || zoneid >= MAX_WATER_ZONES) return 0;
 
     new BitStream:bs = BS_New();
@@ -2075,7 +2075,7 @@ stock CreateWaterZone(Float:minX, Float:minY, Float:maxX, Float:maxY, Float:leve
  * Changes the level of a custom water zone for a specific player.
  */
 stock SetWaterZoneLevelForPlayer(playerid, zoneid, Float:level) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     if (zoneid < 0 || zoneid >= MAX_WATER_ZONES) return 0;
 
     new BitStream:bs = BS_New();
@@ -2109,7 +2109,7 @@ stock SetWaterZoneLevel(zoneid, Float:level) {
  * Resizes / moves a custom water zone for a specific player.
  */
 stock SetWaterZoneCoordsForPlayer(playerid, zoneid, Float:minX, Float:minY, Float:maxX, Float:maxY, Float:level, Float:bottomZ = -100.0) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     if (zoneid < 0 || zoneid >= MAX_WATER_ZONES) return 0;
 
     new BitStream:bs = BS_New();
@@ -2154,7 +2154,7 @@ stock SetWaterZoneCoords(zoneid, Float:minX, Float:minY, Float:maxX, Float:maxY,
  * Destroys a custom water zone for a specific player.
  */
 stock DestroyWaterZoneForPlayer(playerid, zoneid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     if (zoneid < 0 || zoneid >= MAX_WATER_ZONES) return 0;
 
     new BitStream:bs = BS_New();
@@ -2228,7 +2228,7 @@ stock GetWaterZoneCoords(zoneid, &Float:minX, &Float:minY, &Float:maxX, &Float:m
  * =============================================================================
  */
 stock ToggleNightVision(playerid, bool:toggle) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerNightVision[playerid] = toggle;
     new BitStream:bs = BS_New();
     BS_WriteValue(bs,
@@ -2251,12 +2251,12 @@ stock ToggleNightVisionForAll(bool:toggle) {
 }
 
 stock bool:GetPlayerNightVision(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    if (!IsPlayerConnected(playerid)) return false;
     return EXTGAME::PlayerNightVision[playerid];
 }
 
 stock ToggleThermalVision(playerid, bool:toggle) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerThermalVision[playerid] = toggle;
     new BitStream:bs = BS_New();
     BS_WriteValue(bs,
@@ -2279,7 +2279,7 @@ stock ToggleThermalVisionForAll(bool:toggle) {
 }
 
 stock bool:GetPlayerThermalVision(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    if (!IsPlayerConnected(playerid)) return false;
     return EXTGAME::PlayerThermalVision[playerid];
 }
 
@@ -2289,7 +2289,7 @@ stock bool:GetPlayerThermalVision(playerid) {
  * =============================================================================
  */
 stock SetPlayerNoReload(playerid, bool:toggle) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerNoReload[playerid] = toggle;
     new BitStream:bs = BS_New();
     BS_WriteValue(bs,
@@ -2312,12 +2312,12 @@ stock SetPlayerNoReloadForAll(bool:toggle) {
 }
 
 stock bool:GetPlayerNoReload(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    if (!IsPlayerConnected(playerid)) return false;
     return EXTGAME::PlayerNoReload[playerid];
 }
 
 stock TogglePlayerSwitchReload(playerid, bool:toggle) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerSwitchReload[playerid] = toggle;
     new BitStream:bs = BS_New();
     BS_WriteValue(bs,
@@ -2340,12 +2340,12 @@ stock TogglePlayerSwitchReloadForAll(bool:toggle) {
 }
 
 stock bool:GetPlayerSwitchReload(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    if (!IsPlayerConnected(playerid)) return false;
     return EXTGAME::PlayerSwitchReload[playerid];
 }
 
 stock ToggleQuickReloadForPlayer(playerid, bool:toggle) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerQuickReload[playerid] = toggle;
     new BitStream:bs = BS_New();
     BS_WriteValue(bs,
@@ -2368,7 +2368,7 @@ stock ToggleQuickReloadForAll(bool:toggle) {
 }
 
 stock bool:GetPlayerQuickReload(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    if (!IsPlayerConnected(playerid)) return false;
     return EXTGAME::PlayerQuickReload[playerid];
 }
 
@@ -2378,7 +2378,7 @@ stock bool:GetPlayerQuickReload(playerid) {
  * =============================================================================
  */
 stock TogglePlayerInfiniteOxygen(playerid, bool:toggle) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerInfiniteOxygen[playerid] = toggle;
     new BitStream:bs = BS_New();
     BS_WriteValue(bs,
@@ -2401,7 +2401,7 @@ stock TogglePlayerInfiniteOxygenForAll(bool:toggle) {
 }
 
 stock bool:GetPlayerInfiniteOxygen(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    if (!IsPlayerConnected(playerid)) return false;
     return EXTGAME::PlayerInfiniteOxygen[playerid];
 }
 
@@ -2419,7 +2419,7 @@ static stock _SendPlayerPedAnimsPacket(recipient, targetid, mode) {
 }
 
 stock SetPlayerPedAnims(playerid, bool:toggle) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     new mode = toggle ? 1 : 2;
     EXTGAME::PlayerPedAnims[playerid] = mode;
     for (new i = 0; i < MAX_PLAYERS; i++) {
@@ -2431,12 +2431,12 @@ stock SetPlayerPedAnims(playerid, bool:toggle) {
 }
 
 stock GetPlayerPedAnims(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     return EXTGAME::PlayerPedAnims[playerid];
 }
 
 stock TogglePlayerCursor(playerid, bool:toggle) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerCursor[playerid] = toggle;
     new BitStream:bs = BS_New();
     BS_WriteValue(bs,
@@ -2451,7 +2451,7 @@ stock TogglePlayerCursor(playerid, bool:toggle) {
 }
 
 stock bool:GetCursorState(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    if (!IsPlayerConnected(playerid)) return false;
     return EXTGAME::PlayerCursor[playerid];
 }
 
@@ -2461,7 +2461,7 @@ stock bool:GetCursorState(playerid) {
  * =============================================================================
  */
 stock SetPlaneRadarColor(playerid, color, g = -1, b = -1, a = -1) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     new hexColor = color;
     if (g != -1 && b != -1 && a != -1) {
         hexColor = ((color & 0xFF) << 24) | ((g & 0xFF) << 16) | ((b & 0xFF) << 8) | (a & 0xFF);
@@ -2492,7 +2492,7 @@ stock SetPlaneRadarColorForAll(color, g = -1, b = -1, a = -1) {
 }
 
 stock GetPlaneRadarColor(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return 0xFFFFFFFF;
+    if (!IsPlayerConnected(playerid)) return 0xFFFFFFFF;
     return EXTGAME::PlayerPlaneRadarColor[playerid];
 }
 
@@ -2502,7 +2502,7 @@ stock GetPlaneRadarColor(playerid) {
  * =============================================================================
  */
 stock SetPlayerSunColor(playerid, coreColor, coronaColor = -1) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     if (coronaColor == -1) coronaColor = coreColor;
     EXTGAME::PlayerSunColorSet[playerid] = true;
     EXTGAME::PlayerSunCoreColor[playerid] = coreColor;
@@ -2532,7 +2532,7 @@ stock SetSunColorForAll(coreColor, coronaColor = -1) {
 }
 
 stock ResetPlayerSunColor(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerSunColorSet[playerid] = false;
     EXTGAME::PlayerSunCoreColor[playerid] = 0xFFFFFFFF;
     EXTGAME::PlayerSunCoronaColor[playerid] = 0xFFFFFFFF;
@@ -2558,7 +2558,7 @@ stock ResetSunColorForAll() {
 }
 
 stock bool:GetPlayerSunColor(playerid, &coreColor, &coronaColor) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    if (!IsPlayerConnected(playerid)) return false;
     coreColor = EXTGAME::PlayerSunCoreColor[playerid];
     coronaColor = EXTGAME::PlayerSunCoronaColor[playerid];
     return EXTGAME::PlayerSunColorSet[playerid];
@@ -2570,7 +2570,7 @@ stock bool:GetPlayerSunColor(playerid, &coreColor, &coronaColor) {
  * =============================================================================
  */
 stock SetPlayerMoonColor(playerid, color) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerMoonColorSet[playerid] = true;
     EXTGAME::PlayerMoonColor[playerid] = color;
     new BitStream:bs = BS_New();
@@ -2595,7 +2595,7 @@ stock SetMoonColorForAll(color) {
 }
 
 stock ResetPlayerMoonColor(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerMoonColorSet[playerid] = false;
     EXTGAME::PlayerMoonColor[playerid] = 0xFFFFFFFF;
     new BitStream:bs = BS_New();
@@ -2619,7 +2619,7 @@ stock ResetMoonColorForAll() {
 }
 
 stock bool:GetPlayerMoonColor(playerid, &color) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    if (!IsPlayerConnected(playerid)) return false;
     color = EXTGAME::PlayerMoonColor[playerid];
     return EXTGAME::PlayerMoonColorSet[playerid];
 }
@@ -2630,7 +2630,7 @@ stock bool:GetPlayerMoonColor(playerid, &color) {
  * =============================================================================
  */
 stock TogglePlayerVehicleBlur(playerid, bool:toggle, intensity = 36) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid)) return 0;
+    if (!IsPlayerConnected(playerid)) return 0;
     EXTGAME::PlayerVehicleBlur[playerid] = toggle;
     EXTGAME::PlayerVehicleBlurIntensity[playerid] = intensity;
     new BitStream:bs = BS_New();
@@ -2656,7 +2656,7 @@ stock ToggleVehicleBlurForAll(bool:toggle, intensity = 36) {
 }
 
 stock bool:GetPlayerVehicleBlur(playerid, &intensity = 0) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    if (!IsPlayerConnected(playerid)) return false;
     intensity = EXTGAME::PlayerVehicleBlurIntensity[playerid];
     return EXTGAME::PlayerVehicleBlur[playerid];
 }
@@ -2671,7 +2671,7 @@ forward OnPlayerClosePauseMenu(playerid);
 forward OnPlayerEnterPauseSubmenu(playerid, from, to);
 
 stock bool:IsPlayerInPauseMenu(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS) return false;
+    if (!IsPlayerConnected(playerid)) return false;
     return EXTGAME::PlayerInPauseMenu[playerid];
 }
 
@@ -2960,7 +2960,7 @@ public OnIncomingPacket(playerid, packetid, BitStream:bs) {
 // Deferred synchronization callback executed 50ms after handshake to keep OnIncomingPacket lightweight
 forward _DeferredSyncPlayerExtendedGame(playerid);
 public _DeferredSyncPlayerExtendedGame(playerid) {
-    if (playerid < 0 || playerid >= MAX_PLAYERS || !IsPlayerConnected(playerid) || !EXTGAME::PlayerHasPlugin[playerid])
+    if (!IsPlayerConnected(playerid) || !EXTGAME::PlayerHasPlugin[playerid])
         return 0;
 
     _SyncPlayerExtendedGameSettings(playerid);
