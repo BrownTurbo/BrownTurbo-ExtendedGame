@@ -4,7 +4,6 @@
 #define _extendedgame_included
 #define _extendedgame_included
 
-
 #if !defined _pawn_raknet_included && !defined PAWNRAKNET_INC_
     #tryinclude <Pawn.RakNet>
 #endif
@@ -15,17 +14,11 @@
 
 #define EXTGAME:: extg_
 
-#if !defined MAX_PLAYERS
-    #define MAX_PLAYERS                 (1000)
-#endif
-
 // Packet Identification
 #define EXTENDEDGAME_PACKET_ID          (252)
 #define EXTENDEDGAME_TARGET_LOCAL_PLAYER (0xFFFF)
 
 // Versioning & Protocol Magic
-#define EXTENDEDGAME_VERSION            (0x0001)     // v0.0.1 (Alpha)
-#define EXTENDEDGAME_VERSION_STR        "0.0.1-alpha"
 #define EXTENDEDGAME_HANDSHAKE_MAGIC    (0x42544547) // 'BTEG' (BrownTurbo ExtendedGame)
 
 // Packet Sub-actions
