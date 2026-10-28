@@ -9,7 +9,7 @@ class CPed;
 class CPlayerPed;
 class CPedClothesDesc;
 
-namespace cj_manager {
+namespace CJManager {
 
 // Initialize CJ system & hooks
 bool Initialize();

@@ -10,7 +10,7 @@
 #include <mutex>
 #include <algorithm>
 
-namespace water_zones {
+namespace WaterZones {
 namespace {
 
 struct WaterZone {
@@ -60,7 +60,7 @@ bool g_HooksInstalled = false;
 void __declspec(naked) Hook_RenderWater_Zones() {
     __asm {
         pushad
-        call water_zones::RenderAll
+        call WaterZones::RenderAll
         popad
         // Replicate original instruction: cmp dword ptr [0xC4B950], ebx (where ebx is 0)
         cmp dword ptr ds:[0xC4B950], 0

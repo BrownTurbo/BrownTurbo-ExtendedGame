@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <string>
 
-namespace game_extensions {
+namespace GameExtensions{
 
 // Lifecycle
 bool Initialize();

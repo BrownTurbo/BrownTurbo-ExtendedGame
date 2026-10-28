@@ -34,10 +34,10 @@ void ExtendedGamePlugin::Init(HMODULE hModule)
 
 	// 1. Immediately install Model 0 hook and gameplay/environment hooks in GTA:SA
 	if (!m_bModel0HookInstalled) {
-		cj_manager::Initialize();
-		game_extensions::Initialize();
-		textdraw_rotation::Initialize();
-		water_zones::Initialize();
+		CJManager::Initialize();
+		GameExtensions::Initialize();
+		TextDrawRotation::Initialize();
+		WaterZones::Initialize();
 		m_bModel0HookInstalled = true;
 		ClientLog(LogLevel::Info, "Model CJ, gameplay extensions, textdraw rotation, and water zones hooks initialized");
 	}
@@ -83,7 +83,7 @@ void ExtendedGamePlugin::InitializeRakHookThread()
 			if (IsGameInitialized()) {
 				if (rakhook::initialize()) {
 					m_bRakHookReady = true;
-					packet_handler::Initialize();
+					PacketHandler::Initialize();
 					ClientLog(LogLevel::Info, std::format("rakhook initialized successfully (samp_version={})", static_cast<int>(rakhook::samp_version())));
 					SendMsg(0x00FF00AA, "{00FF00}[BrownTurbo-ExtendedGame]{FFFFFF} ASI Plugin initialized.");
 					break;
@@ -99,18 +99,18 @@ void ExtendedGamePlugin::OnGameProcess()
 	static bool s_bClothesInit = false;
 	if (!s_bClothesInit) {
 		s_bClothesInit = true;
-		cj_manager::EnsureClothesSystemInitialized();
+		CJManager::EnsureClothesSystemInitialized();
 	}
 
 	// Process gameplay & environmental states every frame
-	game_extensions::Process();
-	textdraw_rotation::Process();
-	water_zones::Process();
+	GameExtensions::Process();
+	TextDrawRotation::Process();
+	WaterZones::Process();
 
 	// If RakHook is initialized, process periodic sync & peds
 	if (m_bRakHookReady) {
-		packet_handler::Process();
-		cj_manager::Process();
+		PacketHandler::Process();
+		CJManager::Process();
 	}
 }
 
@@ -118,7 +118,7 @@ void ExtendedGamePlugin::Shutdown()
 {
 	ClientLog(LogLevel::Info, "BrownTurbo-ExtendedGame DLL_PROCESS_DETACH");
 	if (m_bRakHookReady) {
-		packet_handler::Shutdown();
+		PacketHandler::Shutdown();
 		rakhook::destroy();
 		m_bRakHookReady = false;
 	}
@@ -130,10 +130,10 @@ void ExtendedGamePlugin::Shutdown()
 	}
 
 	if (m_bModel0HookInstalled) {
-		water_zones::Shutdown();
-		textdraw_rotation::Shutdown();
-		game_extensions::Shutdown();
-		cj_manager::Shutdown();
+		WaterZones::Shutdown();
+		TextDrawRotation::Shutdown();
+		GameExtensions::Shutdown();
+		CJManager::Shutdown();
 		m_bModel0HookInstalled = false;
 	}
 }

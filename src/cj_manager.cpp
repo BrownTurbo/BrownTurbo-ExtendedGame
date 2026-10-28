@@ -25,7 +25,7 @@
 
 #include <MinHook.h>
 
-namespace cj_manager {
+namespace CJManager {
 
 static std::unordered_map<uint16_t, CJSkinState> g_cachedStates;
 static bool g_bInitialized = false;
@@ -344,7 +344,7 @@ void EnsureClothesSystemInitialized()
 	}
 
 	CClothes::RequestMotionGroupAnims();
-	game_extensions::EnsureJetpackLoaded();
+	GameExtensions::EnsureJetpackLoaded();
 	ClientLog(LogLevel::Info, "EnsureClothesSystemInitialized: GTA:SA Clothes subsystem verified and ready");
 }
 
@@ -793,7 +793,7 @@ void Process()
 				auto it = g_lastSyncRequests.find(i);
 				if (it == g_lastSyncRequests.end() || (now - it->second) >= 3000) {
 					g_lastSyncRequests[i] = now;
-					packet_handler::RequestPlayerSync(i);
+					PacketHandler::RequestPlayerSync(i);
 				}
 			}
 		}

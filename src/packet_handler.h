@@ -10,7 +10,7 @@
 
 struct Packet;
 
-namespace packet_handler {
+namespace PacketHandler {
 
 bool Initialize();
 void Shutdown();

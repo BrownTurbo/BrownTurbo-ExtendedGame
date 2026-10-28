@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace textdraw_rotation {
+namespace TextDrawRotation{
 
 bool Initialize();
 void Process();

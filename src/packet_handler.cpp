@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-namespace packet_handler {
+namespace PacketHandler {
 
 static bool g_bHooked = false;
 static bool g_bHandshakeConfirmed = false;
@@ -74,10 +74,10 @@ bool OnReceivePacket(Packet* p)
 		ClientLog(LogLevel::Info, "Disconnected from server, clearing states...");
 		g_bHandshakeConfirmed = false;
 		s_handshakeRetryCount = 0;
-		cj_manager::ClearAllCachedStates();
-		game_extensions::ClearAllStates();
-		textdraw_rotation::ClearAllStates();
-		water_zones::ClearAllStates();
+		CJManager::ClearAllCachedStates();
+		GameExtensions::ClearAllStates();
+		TextDrawRotation::ClearAllStates();
+		WaterZones::ClearAllStates();
 		return true;
 	}
 
@@ -133,10 +133,10 @@ bool OnReceivePacket(Packet* p)
 		ClientLog(LogLevel::Debug, std::format("CJ_ACTION_SET_CLOTHES: playerId={}, slot={}, tex='{}', mdl='{}', rebuild={}, pPed={:p}",
 			playerId, slot, texture, model, bRebuild, static_cast<void*>(pPed)));
 
-		cj_manager::CacheClothes(playerId, slot, texHash, mdlHash);
+		CJManager::CacheClothes(playerId, slot, texHash, mdlHash);
 
 		if (pPed) {
-			cj_manager::SetClothes(pPed, slot, texture, model, bRebuild != 0);
+			CJManager::SetClothes(pPed, slot, texture, model, bRebuild != 0);
 		}
 		break;
 	}
@@ -150,10 +150,10 @@ bool OnReceivePacket(Packet* p)
 			bs.Read(bRebuild);
 		}
 
-		cj_manager::CacheClothes(playerId, slot, 0, 0);
+		CJManager::CacheClothes(playerId, slot, 0, 0);
 
 		if (pPed) {
-			cj_manager::RemoveClothes(pPed, slot, bRebuild != 0);
+			CJManager::RemoveClothes(pPed, slot, bRebuild != 0);
 		}
 		break;
 	}
@@ -168,10 +168,10 @@ bool OnReceivePacket(Packet* p)
 			bs.Read(bRebuild);
 		}
 
-		cj_manager::CacheBodyStats(playerId, fat, muscle);
+		CJManager::CacheBodyStats(playerId, fat, muscle);
 
 		if (pPed) {
-			cj_manager::SetBodyStats(pPed, fat, muscle, bRebuild != 0);
+			CJManager::SetBodyStats(pPed, fat, muscle, bRebuild != 0);
 		}
 		break;
 	}
@@ -190,17 +190,17 @@ bool OnReceivePacket(Packet* p)
 		ClientLog(LogLevel::Debug, std::format("CJ_ACTION_RESET_CLOTHES: playerId={}, toDefault={}, rebuild={}, pPed={:p}",
 			playerId, toDefault, bRebuild, static_cast<void*>(pPed)));
 
-		cj_manager::CacheReset(playerId, toDefault != 0);
+		CJManager::CacheReset(playerId, toDefault != 0);
 
 		if (pPed) {
-			cj_manager::ResetClothes(pPed, toDefault != 0, bRebuild != 0);
+			CJManager::ResetClothes(pPed, toDefault != 0, bRebuild != 0);
 		}
 		break;
 	}
 
 	case CJ_ACTION_REBUILD: {
 		if (pPed) {
-			cj_manager::RebuildCJ(pPed);
+			CJManager::RebuildCJ(pPed);
 		}
 		break;
 	}
@@ -214,8 +214,8 @@ bool OnReceivePacket(Packet* p)
 		if (itemCount > CJ_SLOT_COUNT) return false;
 
 		// Reset cached state to empty first so no lingering items from prior outfit remain
-		cj_manager::CacheReset(playerId, false);
-		cj_manager::CacheBodyStats(playerId, fat, muscle);
+		CJManager::CacheReset(playerId, false);
+		CJManager::CacheBodyStats(playerId, fat, muscle);
 
 		std::vector<CJSkinItem> items;
 		items.reserve(itemCount);
@@ -230,17 +230,17 @@ bool OnReceivePacket(Packet* p)
 			item.textureHash = isRemove ? 0 : CKeyGen::GetUppercaseKey(item.textureName.c_str());
 			item.modelHash = (isRemove || item.modelName.empty() || item.modelName == "none" || item.modelName == "0") ? 0 : CKeyGen::GetUppercaseKey(item.modelName.c_str());
 
-			cj_manager::CacheClothes(playerId, item.slot, item.textureHash, item.modelHash);
+			CJManager::CacheClothes(playerId, item.slot, item.textureHash, item.modelHash);
 			items.push_back(std::move(item));
 		}
 
 		if (pPed) {
-			cj_manager::ResetClothes(pPed, false, false);
+			CJManager::ResetClothes(pPed, false, false);
 			for (const auto& item : items) {
-				cj_manager::SetClothes(pPed, item.slot, item.textureName, item.modelName, false);
+				CJManager::SetClothes(pPed, item.slot, item.textureName, item.modelName, false);
 			}
-			cj_manager::SetBodyStats(pPed, fat, muscle, false);
-			cj_manager::RebuildCJ(pPed);
+			CJManager::SetBodyStats(pPed, fat, muscle, false);
+			CJManager::RebuildCJ(pPed);
 		}
 		break;
 	}
@@ -257,10 +257,10 @@ bool OnReceivePacket(Packet* p)
 			bs.Read(bRebuild);
 		}
 
-		cj_manager::CacheClothes(playerId, slot, textureHash, modelHash);
+		CJManager::CacheClothes(playerId, slot, textureHash, modelHash);
 
 		if (pPed) {
-			cj_manager::SetClothesHash(pPed, slot, textureHash, modelHash, bRebuild != 0);
+			CJManager::SetClothesHash(pPed, slot, textureHash, modelHash, bRebuild != 0);
 		}
 		break;
 	}
@@ -285,16 +285,16 @@ bool OnReceivePacket(Packet* p)
 
 		bool isRemove = (texture.empty() || texture == "none" || texture == "0");
 		uint32_t texHash = isRemove ? 0 : CKeyGen::GetUppercaseKey(texture.c_str());
-		cj_manager::CacheClothes(playerId, tattooSlot, texHash, 0);
+		CJManager::CacheClothes(playerId, tattooSlot, texHash, 0);
 
 		if (pPed) {
-			cj_manager::SetClothes(pPed, tattooSlot, texture, "", bRebuild != 0);
+			CJManager::SetClothes(pPed, tattooSlot, texture, "", bRebuild != 0);
 		}
 		break;
 	}
 
 	case CJ_ACTION_CLEAR_CACHE: {
-		cj_manager::RemoveCachedState(playerId);
+		CJManager::RemoveCachedState(playerId);
 		break;
 	}
 
@@ -318,7 +318,7 @@ bool OnReceivePacket(Packet* p)
 		float limit = 800.0f;
 		if (bs.Read(limit)) {
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_SET_AIRCRAFT_HEIGHT_LIMIT: limit={:.1f}", limit));
-			game_extensions::SetAircraftHeightLimit(limit);
+			GameExtensions::SetAircraftHeightLimit(limit);
 		}
 		break;
 	}
@@ -327,7 +327,7 @@ bool OnReceivePacket(Packet* p)
 		float limit = 100.0f;
 		if (bs.Read(limit)) {
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_SET_JETPACK_HEIGHT_LIMIT: limit={:.1f}", limit));
-			game_extensions::SetJetpackHeightLimit(limit);
+			GameExtensions::SetJetpackHeightLimit(limit);
 		}
 		break;
 	}
@@ -336,7 +336,7 @@ bool OnReceivePacket(Packet* p)
 		uint8_t knockState = BIKE_KNOCK_OFF_DEFAULT;
 		if (bs.Read(knockState)) {
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_SET_BIKE_KNOCK_OFF: playerId={}, knockState={}", playerId, knockState));
-			game_extensions::SetPlayerKnockedOffBikeState(playerId, knockState);
+			GameExtensions::SetPlayerKnockedOffBikeState(playerId, knockState);
 		}
 		break;
 	}
@@ -345,7 +345,7 @@ bool OnReceivePacket(Packet* p)
 		uint8_t enable = 0;
 		if (bs.Read(enable)) {
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_SET_FIRE_PROOF: playerId={}, enable={}", playerId, enable));
-			game_extensions::SetPlayerFireProof(playerId, enable != 0);
+			GameExtensions::SetPlayerFireProof(playerId, enable != 0);
 		}
 		break;
 	}
@@ -354,7 +354,7 @@ bool OnReceivePacket(Packet* p)
 		uint8_t enable = 0;
 		if (bs.Read(enable)) {
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_SET_INFINITE_SPRINT: enable={}", enable));
-			game_extensions::TogglePlayerInfiniteSprint(enable != 0);
+			GameExtensions::TogglePlayerInfiniteSprint(enable != 0);
 		}
 		break;
 	}
@@ -363,7 +363,7 @@ bool OnReceivePacket(Packet* p)
 		uint8_t enable = 1;
 		if (bs.Read(enable)) {
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_SET_SUN: enable={}", enable));
-			game_extensions::TogglePlayerSun(enable != 0);
+			GameExtensions::TogglePlayerSun(enable != 0);
 		}
 		break;
 	}
@@ -372,7 +372,7 @@ bool OnReceivePacket(Packet* p)
 		uint8_t enable = 1;
 		if (bs.Read(enable)) {
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_TOGGLE_MOON: enable={}", enable));
-			game_extensions::TogglePlayerMoon(enable != 0);
+			GameExtensions::TogglePlayerMoon(enable != 0);
 		}
 		break;
 	}
@@ -381,7 +381,7 @@ bool OnReceivePacket(Packet* p)
 		uint8_t enable = 1;
 		if (bs.Read(enable)) {
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_TOGGLE_STARS: enable={}", enable));
-			game_extensions::TogglePlayerStars(enable != 0);
+			GameExtensions::TogglePlayerStars(enable != 0);
 		}
 		break;
 	}
@@ -390,7 +390,7 @@ bool OnReceivePacket(Packet* p)
 		uint8_t enable = 1;
 		if (bs.Read(enable)) {
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_TOGGLE_LOW_CLOUDS: enable={}", enable));
-			game_extensions::TogglePlayerLowClouds(enable != 0);
+			GameExtensions::TogglePlayerLowClouds(enable != 0);
 		}
 		break;
 	}
@@ -399,7 +399,7 @@ bool OnReceivePacket(Packet* p)
 		uint8_t enable = 1;
 		if (bs.Read(enable)) {
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_TOGGLE_FLUFFY_CLOUDS: enable={}", enable));
-			game_extensions::TogglePlayerFluffyClouds(enable != 0);
+			GameExtensions::TogglePlayerFluffyClouds(enable != 0);
 		}
 		break;
 	}
@@ -408,7 +408,7 @@ bool OnReceivePacket(Packet* p)
 		uint8_t enable = 1;
 		if (bs.Read(enable)) {
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_TOGGLE_RAINBOW: enable={}", enable));
-			game_extensions::TogglePlayerRainbow(enable != 0);
+			GameExtensions::TogglePlayerRainbow(enable != 0);
 		}
 		break;
 	}
@@ -416,7 +416,7 @@ bool OnReceivePacket(Packet* p)
 	case EXTENDEDGAME_ACTION_TOGGLE_HUD_COMPONENTS: {
 		uint32_t hudComponents = HUD_COMPONENT_ALL;
 		if (bs.Read(hudComponents)) {
-			game_extensions::TogglePlayerHUDComponents(hudComponents);
+			GameExtensions::TogglePlayerHUDComponents(hudComponents);
 		}
 		break;
 	}
@@ -425,7 +425,7 @@ bool OnReceivePacket(Packet* p)
 		uint32_t hudComponents = 0;
 		uint32_t intColour = 0;
 		if (bs.Read(hudComponents) && bs.Read(intColour)) {
-			game_extensions::SetPlayerHUDComponentsColour(hudComponents, intColour);
+			GameExtensions::SetPlayerHUDComponentsColour(hudComponents, intColour);
 		}
 		break;
 	}
@@ -435,7 +435,7 @@ bool OnReceivePacket(Packet* p)
 		uint8_t waterParts = 0;
 		if (bs.Read(level) && bs.Read(waterParts)) {
 			if ((waterParts & ~0x07) != 0 ||
-				!game_extensions::SetWaterLevel(
+				!GameExtensions::SetWaterLevel(
 					level,
 					(waterParts & 0x01) != 0,
 					(waterParts & 0x02) != 0,
@@ -450,7 +450,7 @@ bool OnReceivePacket(Packet* p)
 	case EXTENDEDGAME_ACTION_SET_WATER_WAVE_HEIGHT: {
 		float height = 0.0f;
 		if (bs.Read(height)) {
-			if (!game_extensions::SetWaterWaveHeight(height)) {
+			if (!GameExtensions::SetWaterWaveHeight(height)) {
 				ClientLog(LogLevel::Warning, std::format("Rejected invalid water wave height: {:.3f}", height));
 			}
 		}
@@ -458,7 +458,7 @@ bool OnReceivePacket(Packet* p)
 	}
 
 	case EXTENDEDGAME_ACTION_RESET_WATER_LEVEL: {
-		if (!game_extensions::ResetWaterLevel()) {
+		if (!GameExtensions::ResetWaterLevel()) {
 			ClientLog(LogLevel::Warning, "Could not reset water level before water data initialization");
 		}
 		break;
@@ -474,7 +474,7 @@ bool OnReceivePacket(Packet* p)
 		if (bs.Read(textDrawId) && bs.Read(isPlayerTextDraw) &&
 			bs.Read(angle) && bs.Read(pivotX) && bs.Read(pivotY) && bs.Read(spinSpeed)) {
 			uint16_t slot = isPlayerTextDraw ? static_cast<uint16_t>(2048 + textDrawId) : textDrawId;
-			textdraw_rotation::Set(slot, angle, pivotX, pivotY, spinSpeed);
+			TextDrawRotation::Set(slot, angle, pivotX, pivotY, spinSpeed);
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_SET_TEXTDRAW_ROTATION: id={}, isPlayer={}, angle={:.1f}, pivot=({:.1f}, {:.1f}), spin={:.1f}",
 				textDrawId, isPlayerTextDraw, angle, pivotX, pivotY, spinSpeed));
 		}
@@ -486,7 +486,7 @@ bool OnReceivePacket(Packet* p)
 		uint8_t isPlayerTextDraw = 0;
 		if (bs.Read(textDrawId) && bs.Read(isPlayerTextDraw)) {
 			uint16_t slot = isPlayerTextDraw ? static_cast<uint16_t>(2048 + textDrawId) : textDrawId;
-			textdraw_rotation::Reset(slot);
+			TextDrawRotation::Reset(slot);
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_RESET_TEXTDRAW_ROTATION: id={}, isPlayer={}",
 				textDrawId, isPlayerTextDraw));
 		}
@@ -503,7 +503,7 @@ bool OnReceivePacket(Packet* p)
 		float bottomZ = -100.0f;
 		if (bs.Read(zoneId) && bs.Read(minX) && bs.Read(minY) &&
 			bs.Read(maxX) && bs.Read(maxY) && bs.Read(level) && bs.Read(bottomZ)) {
-			water_zones::Create(zoneId, minX, minY, maxX, maxY, level, bottomZ);
+			WaterZones::Create(zoneId, minX, minY, maxX, maxY, level, bottomZ);
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_CREATE_WATER_ZONE: id={}, bounds=[{:.1f}, {:.1f} to {:.1f}, {:.1f}], level={:.2f}, bottom={:.2f}",
 				zoneId, minX, minY, maxX, maxY, level, bottomZ));
 		}
@@ -514,7 +514,7 @@ bool OnReceivePacket(Packet* p)
 		uint16_t zoneId = 0;
 		float level = 0.0f;
 		if (bs.Read(zoneId) && bs.Read(level)) {
-			water_zones::SetLevel(zoneId, level);
+			WaterZones::SetLevel(zoneId, level);
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_SET_WATER_ZONE_LEVEL: id={}, level={:.2f}",
 				zoneId, level));
 		}
@@ -531,7 +531,7 @@ bool OnReceivePacket(Packet* p)
 		float bottomZ = -100.0f;
 		if (bs.Read(zoneId) && bs.Read(minX) && bs.Read(minY) &&
 			bs.Read(maxX) && bs.Read(maxY) && bs.Read(level) && bs.Read(bottomZ)) {
-			water_zones::SetCoords(zoneId, minX, minY, maxX, maxY, level, bottomZ);
+			WaterZones::SetCoords(zoneId, minX, minY, maxX, maxY, level, bottomZ);
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_SET_WATER_ZONE_COORDS: id={}, bounds=[{:.1f}, {:.1f} to {:.1f}, {:.1f}], level={:.2f}",
 				zoneId, minX, minY, maxX, maxY, level));
 		}
@@ -541,7 +541,7 @@ bool OnReceivePacket(Packet* p)
 	case EXTENDEDGAME_ACTION_DESTROY_WATER_ZONE: {
 		uint16_t zoneId = 0;
 		if (bs.Read(zoneId)) {
-			water_zones::Destroy(zoneId);
+			WaterZones::Destroy(zoneId);
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_DESTROY_WATER_ZONE: id={}", zoneId));
 		}
 		break;
@@ -552,8 +552,8 @@ bool OnReceivePacket(Packet* p)
 		float rotAngle = 90.0f, rotAxisX = 0.0f, rotAxisY = 1.0f, rotAxisZ = 0.0f;
 		if (bs.Read(posX) && bs.Read(posY) && bs.Read(posZ) &&
 			bs.Read(rotAngle) && bs.Read(rotAxisX) && bs.Read(rotAxisY) && bs.Read(rotAxisZ)) {
-			game_extensions::SetJetpackOffset(posX, posY, posZ);
-			game_extensions::SetJetpackRotation(rotAngle, rotAxisX, rotAxisY, rotAxisZ);
+			GameExtensions::SetJetpackOffset(posX, posY, posZ);
+			GameExtensions::SetJetpackRotation(rotAngle, rotAxisX, rotAxisY, rotAxisZ);
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_SET_JETPACK_OFFSET: pos=({:.3f}, {:.3f}, {:.3f}), rot=({:.1f} deg, axis: {:.1f}, {:.1f}, {:.1f})",
 				posX, posY, posZ, rotAngle, rotAxisX, rotAxisY, rotAxisZ));
 		}
@@ -561,7 +561,7 @@ bool OnReceivePacket(Packet* p)
 	}
 
 	case EXTENDEDGAME_ACTION_RESET_JETPACK_OFFSET: {
-		game_extensions::ResetJetpackOffset();
+		GameExtensions::ResetJetpackOffset();
 		ClientLog(LogLevel::Info, "EXTENDEDGAME_ACTION_RESET_JETPACK_OFFSET received");
 		break;
 	}
@@ -569,7 +569,7 @@ bool OnReceivePacket(Packet* p)
 	case EXTENDEDGAME_ACTION_TOGGLE_NIGHT_VISION: {
 		uint8_t enable = 0;
 		if (bs.Read(enable)) {
-			game_extensions::ToggleNightVision(enable != 0);
+			GameExtensions::ToggleNightVision(enable != 0);
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_TOGGLE_NIGHT_VISION: enable={}", enable));
 		}
 		break;
@@ -578,7 +578,7 @@ bool OnReceivePacket(Packet* p)
 	case EXTENDEDGAME_ACTION_TOGGLE_THERMAL_VISION: {
 		uint8_t enable = 0;
 		if (bs.Read(enable)) {
-			game_extensions::ToggleThermalVision(enable != 0);
+			GameExtensions::ToggleThermalVision(enable != 0);
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_TOGGLE_THERMAL_VISION: enable={}", enable));
 		}
 		break;
@@ -587,7 +587,7 @@ bool OnReceivePacket(Packet* p)
 	case EXTENDEDGAME_ACTION_SET_NO_RELOAD: {
 		uint8_t enable = 0;
 		if (bs.Read(enable)) {
-			game_extensions::SetNoReload(enable != 0);
+			GameExtensions::SetNoReload(enable != 0);
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_SET_NO_RELOAD: enable={}", enable));
 		}
 		break;
@@ -596,7 +596,7 @@ bool OnReceivePacket(Packet* p)
 	case EXTENDEDGAME_ACTION_TOGGLE_SWITCH_RELOAD: {
 		uint8_t enable = 1;
 		if (bs.Read(enable)) {
-			game_extensions::ToggleSwitchReload(enable != 0);
+			GameExtensions::ToggleSwitchReload(enable != 0);
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_TOGGLE_SWITCH_RELOAD: enable={}", enable));
 		}
 		break;
@@ -605,7 +605,7 @@ bool OnReceivePacket(Packet* p)
 	case EXTENDEDGAME_ACTION_TOGGLE_QUICK_RELOAD: {
 		uint8_t enable = 0;
 		if (bs.Read(enable)) {
-			game_extensions::ToggleQuickReload(enable != 0);
+			GameExtensions::ToggleQuickReload(enable != 0);
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_TOGGLE_QUICK_RELOAD: enable={}", enable));
 		}
 		break;
@@ -614,7 +614,7 @@ bool OnReceivePacket(Packet* p)
 	case EXTENDEDGAME_ACTION_TOGGLE_INFINITE_OXYGEN: {
 		uint8_t enable = 0;
 		if (bs.Read(enable)) {
-			game_extensions::ToggleInfiniteOxygen(enable != 0);
+			GameExtensions::ToggleInfiniteOxygen(enable != 0);
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_TOGGLE_INFINITE_OXYGEN: enable={}", enable));
 		}
 		break;
@@ -624,7 +624,7 @@ bool OnReceivePacket(Packet* p)
 		uint16_t targetId = 0;
 		uint8_t mode = 0;
 		if (bs.Read(targetId) && bs.Read(mode)) {
-			game_extensions::SetPlayerPedAnims(targetId, mode);
+			GameExtensions::SetPlayerPedAnims(targetId, mode);
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_SET_PLAYER_PED_ANIMS: targetId={}, mode={}", targetId, mode));
 		}
 		break;
@@ -633,7 +633,7 @@ bool OnReceivePacket(Packet* p)
 	case EXTENDEDGAME_ACTION_TOGGLE_CURSOR: {
 		uint8_t enable = 0;
 		if (bs.Read(enable)) {
-			game_extensions::TogglePlayerCursor(enable != 0);
+			GameExtensions::TogglePlayerCursor(enable != 0);
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_TOGGLE_CURSOR: enable={}", enable));
 		}
 		break;
@@ -642,7 +642,7 @@ bool OnReceivePacket(Packet* p)
 	case EXTENDEDGAME_ACTION_SET_PLANE_RADAR_COLOR: {
 		uint32_t color = 0xFFFFFFFF;
 		if (bs.Read(color)) {
-			game_extensions::SetPlaneRadarColor(color);
+			GameExtensions::SetPlaneRadarColor(color);
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_SET_PLANE_RADAR_COLOR: color=0x{:08X}", color));
 		}
 		break;
@@ -651,14 +651,14 @@ bool OnReceivePacket(Packet* p)
 	case EXTENDEDGAME_ACTION_SET_SUN_COLOR: {
 		uint32_t core = 0xFFFFFFFF, corona = 0xFFFFFFFF;
 		if (bs.Read(core) && bs.Read(corona)) {
-			game_extensions::SetSunColor(core, corona);
+			GameExtensions::SetSunColor(core, corona);
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_SET_SUN_COLOR: core=0x{:08X}, corona=0x{:08X}", core, corona));
 		}
 		break;
 	}
 
 	case EXTENDEDGAME_ACTION_RESET_SUN_COLOR: {
-		game_extensions::ResetSunColor();
+		GameExtensions::ResetSunColor();
 		ClientLog(LogLevel::Info, "EXTENDEDGAME_ACTION_RESET_SUN_COLOR");
 		break;
 	}
@@ -666,14 +666,14 @@ bool OnReceivePacket(Packet* p)
 	case EXTENDEDGAME_ACTION_SET_MOON_COLOR: {
 		uint32_t color = 0xFFFFFFFF;
 		if (bs.Read(color)) {
-			game_extensions::SetMoonColor(color);
+			GameExtensions::SetMoonColor(color);
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_SET_MOON_COLOR: color=0x{:08X}", color));
 		}
 		break;
 	}
 
 	case EXTENDEDGAME_ACTION_RESET_MOON_COLOR: {
-		game_extensions::ResetMoonColor();
+		GameExtensions::ResetMoonColor();
 		ClientLog(LogLevel::Info, "EXTENDEDGAME_ACTION_RESET_MOON_COLOR");
 		break;
 	}
@@ -683,7 +683,7 @@ bool OnReceivePacket(Packet* p)
 		uint8_t intensity = 36;
 		if (bs.Read(enable)) {
 			bs.Read(intensity);
-			game_extensions::ToggleVehicleBlur(enable != 0, intensity);
+			GameExtensions::ToggleVehicleBlur(enable != 0, intensity);
 			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_TOGGLE_VEHICLE_BLUR: enable={}, intensity={}", enable, intensity));
 		}
 		break;
@@ -706,11 +706,11 @@ bool OnReceiveRpc(unsigned char& id, RakNet::BitStream* bs)
 		g_bHandshakeConfirmed = false;
 		s_handshakeRetryCount = 0;
 		s_lastAuthRetryTick = GetTickCount();
-		cj_manager::ClearAllCachedStates();
-		game_extensions::ClearAllStates();
-		textdraw_rotation::ClearAllStates();
-		water_zones::ClearAllStates();
-		game_extensions::EnsureJetpackLoaded();
+		CJManager::ClearAllCachedStates();
+		GameExtensions::ClearAllStates();
+		TextDrawRotation::ClearAllStates();
+		WaterZones::ClearAllStates();
+		GameExtensions::EnsureJetpackLoaded();
 		SendHandshakePong(0);
 		return true;
 	}
@@ -720,11 +720,11 @@ bool OnReceiveRpc(unsigned char& id, RakNet::BitStream* bs)
 		g_bHandshakeConfirmed = false;
 		s_handshakeRetryCount = 0;
 		s_lastAuthRetryTick = GetTickCount();
-		cj_manager::ClearAllCachedStates();
-		game_extensions::ClearAllStates();
-		textdraw_rotation::ClearAllStates();
-		water_zones::ClearAllStates();
-		game_extensions::EnsureJetpackLoaded();
+		CJManager::ClearAllCachedStates();
+		GameExtensions::ClearAllStates();
+		TextDrawRotation::ClearAllStates();
+		WaterZones::ClearAllStates();
+		GameExtensions::EnsureJetpackLoaded();
 		SendHandshakePong(0);
 		return true;
 	}
@@ -743,7 +743,7 @@ bool OnReceiveRpc(unsigned char& id, RakNet::BitStream* bs)
 				delete pPed->m_pPlayerData;
 				pPed->m_pPlayerData = nullptr;
 			}
-			cj_manager::RemoveCachedState(playerId);
+			CJManager::RemoveCachedState(playerId);
 		}
 		bs->SetReadOffset(readOffset);
 	}
@@ -854,7 +854,7 @@ bool Initialize()
 	rakhook::on_send_rpc += OnSendRpc;
 	g_bHooked = true;
 
-	ClientLog(LogLevel::Info, "packet_handler::Initialize: hooks registered");
+	ClientLog(LogLevel::Info, "PacketHandler::Initialize: hooks registered");
 
 	// If connected to a server already, announce ASI presence immediately
 	if (rakhook::orig && rakhook::orig->IsConnected()) {
@@ -867,7 +867,7 @@ void Shutdown()
 {
 	g_bHooked = false;
 	g_bHandshakeConfirmed = false;
-	ClientLog(LogLevel::Info, "packet_handler::Shutdown: unhooked");
+	ClientLog(LogLevel::Info, "PacketHandler::Shutdown: unhooked");
 }
 
 }

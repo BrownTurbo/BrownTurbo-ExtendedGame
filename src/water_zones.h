@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <CVector.h>
 
-namespace water_zones {
+namespace WaterZones {
 
 constexpr uint16_t MAX_WATER_ZONES = 128;
 constexpr uint16_t INVALID_WATER_ZONE_ID = 0xFFFF;

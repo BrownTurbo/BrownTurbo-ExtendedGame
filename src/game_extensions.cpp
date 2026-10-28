@@ -33,7 +33,7 @@
 #include <unordered_map>
 #include <windows.h>
 
-namespace game_extensions {
+namespace GameExtensions{
 
 // State variables
 static float g_fAircraftHeightLimit = 800.0f; // Default GTA:SA limit is 800.0f
@@ -1514,11 +1514,11 @@ void Process() {
     if (bMenuActive != s_bMenuWasActive) {
         s_bMenuWasActive = bMenuActive;
         s_nMenuLastPage = nMenuPage;
-        packet_handler::SendPauseMenuEvent(bMenuActive ? PAUSE_MENU_EVENT_OPEN : PAUSE_MENU_EVENT_CLOSE, nMenuPage, nMenuPage);
+        PacketHandler::SendPauseMenuEvent(bMenuActive ? PAUSE_MENU_EVENT_OPEN : PAUSE_MENU_EVENT_CLOSE, nMenuPage, nMenuPage);
     } else if (bMenuActive && nMenuPage != s_nMenuLastPage) {
         uint8_t oldPage = s_nMenuLastPage;
         s_nMenuLastPage = nMenuPage;
-        packet_handler::SendPauseMenuEvent(PAUSE_MENU_EVENT_SUBMENU, oldPage, nMenuPage);
+        PacketHandler::SendPauseMenuEvent(PAUSE_MENU_EVENT_SUBMENU, oldPage, nMenuPage);
     }
 
     // 13. Maintain custom Sun Color

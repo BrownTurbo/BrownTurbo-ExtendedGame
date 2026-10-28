@@ -20,7 +20,7 @@
 #include <numbers>
 #include <vector>
 
-namespace textdraw_rotation {
+namespace TextDrawRotation{
 namespace {
 
 constexpr uint16_t MAX_GLOBAL_TEXTDRAWS = 2048;
@@ -348,7 +348,7 @@ void __fastcall HookedTextDrawPoolDraw(void* pool, void*) {
 
 void __fastcall HookedTextDrawPoolDelete(void* pool, void*, uint16_t nId) {
     g_pTextDrawPool = pool;
-    textdraw_rotation::Reset(nId);
+    TextDrawRotation::Reset(nId);
     if (g_OriginalTextDrawPoolDelete) {
         g_OriginalTextDrawPoolDelete(pool, nId);
     }
