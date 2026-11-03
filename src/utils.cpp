@@ -3,6 +3,7 @@
 
 #include <game_sa/CPad.h>
 #include <game_sa/CPlayerPed.h>
+#include <game_sa/CWorld.h>
 #include <game_sa/common.h>
 
 #include <atomic>
@@ -278,7 +279,32 @@ bool IsLocalPlayerPed(CPed* pPed)
 {
 	if (!pPed)
 		return false;
-	return pPed == FindPlayerPed(0);
+
+	if (pPed == FindPlayerPed(0))
+		return true;
+
+	if (pPed->m_nPedType == 0) // PED_TYPE_PLAYER1
+		return true;
+
+	if (CWorld::Players) {
+		if (pPed == CWorld::Players[0].m_pPed)
+			return true;
+		if (pPed->m_pPlayerData && pPed->m_pPlayerData == &CWorld::Players[0].m_PlayerData)
+			return true;
+	}
+
+	auto pool = GetPlayerPoolPtr();
+	return std::visit([pPed](auto&& p) -> bool {
+		using T = std::decay_t<decltype(p)>;
+		if constexpr (!std::is_same_v<T, std::nullptr_t>) {
+			if (p) {
+				auto* localPlayer = p->GetLocalPlayer();
+				if (localPlayer && localPlayer->m_pPed && localPlayer->m_pPed->m_pGamePed == pPed)
+					return true;
+			}
+		}
+		return false;
+	}, pool);
 }
 
 uint16_t GetPedPlayerId(CPed* pGamePed)

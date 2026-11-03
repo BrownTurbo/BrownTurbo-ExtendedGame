@@ -735,13 +735,8 @@ bool OnReceiveRpc(unsigned char& id, RakNet::BitStream* bs)
 		uint16_t playerId = 0;
 		if (bs->Read(playerId)) {
 			CPed* pPed = GetGamePed(playerId);
-			if (pPed && !IsLocalPlayerPed(pPed) && pPed->m_pPlayerData) {
-				if (pPed->m_pPlayerData->m_pPedClothesDesc) {
-					delete pPed->m_pPlayerData->m_pPedClothesDesc;
-					pPed->m_pPlayerData->m_pPedClothesDesc = nullptr;
-				}
-				delete pPed->m_pPlayerData;
-				pPed->m_pPlayerData = nullptr;
+			if (pPed) {
+				CJManager::FreeCustomPedPlayerData(pPed);
 			}
 			CJManager::RemoveCachedState(playerId);
 		}

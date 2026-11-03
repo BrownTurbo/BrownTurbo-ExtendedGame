@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <format>
 #include <unordered_map>
+#include <unordered_set>
 
 #include <game_sa/CClothes.h>
 #include <game_sa/CClothesBuilder.h>
@@ -21,6 +22,7 @@
 #include <game_sa/CTask.h>
 #include <game_sa/CTaskManager.h>
 #include <game_sa/CTxdStore.h>
+#include <game_sa/CWorld.h>
 #include <game_sa/common.h>
 
 #include <MinHook.h>
@@ -28,6 +30,8 @@
 namespace CJManager {
 
 static std::unordered_map<uint16_t, CJSkinState> g_cachedStates;
+static std::unordered_set<CPlayerData*> g_customAllocatedPlayerData;
+static std::unordered_set<CPedClothesDesc*> g_customAllocatedClothesDesc;
 static bool g_bInitialized = false;
 static bool g_bInRebuild = false;
 
@@ -348,6 +352,33 @@ void EnsureClothesSystemInitialized()
 	ClientLog(LogLevel::Info, "EnsureClothesSystemInitialized: GTA:SA Clothes subsystem verified and ready");
 }
 
+void FreeCustomPedPlayerData(CPed* pPed)
+{
+	if (!pPed || !pPed->m_pPlayerData)
+		return;
+
+	// Never touch the local player's player data or any static GTA SA player data!
+	if (IsLocalPlayerPed(pPed))
+		return;
+
+	if (CWorld::Players && pPed->m_pPlayerData == &CWorld::Players[0].m_PlayerData)
+		return;
+
+	if (pPed->m_pPlayerData->m_pPedClothesDesc) {
+		if (g_customAllocatedClothesDesc.contains(pPed->m_pPlayerData->m_pPedClothesDesc)) {
+			g_customAllocatedClothesDesc.erase(pPed->m_pPlayerData->m_pPedClothesDesc);
+			delete pPed->m_pPlayerData->m_pPedClothesDesc;
+		}
+		pPed->m_pPlayerData->m_pPedClothesDesc = nullptr;
+	}
+
+	if (g_customAllocatedPlayerData.contains(pPed->m_pPlayerData)) {
+		g_customAllocatedPlayerData.erase(pPed->m_pPlayerData);
+		delete pPed->m_pPlayerData;
+		pPed->m_pPlayerData = nullptr;
+	}
+}
+
 static void __fastcall Hook_CPed_SetModelIndex(CPed* thisPed, void* edx, unsigned int modelIndex)
 {
 	if (g_bInRebuild) {
@@ -390,15 +421,8 @@ static void __fastcall Hook_CPed_SetModelIndex(CPed* thisPed, void* edx, unsigne
 		return;
 	}
 
-	// Ped is switching from CJ to a non-CJ model:
-	if (!IsLocalPlayerPed(thisPed) && thisPed->m_pPlayerData) {
-		if (thisPed->m_pPlayerData->m_pPedClothesDesc) {
-			delete thisPed->m_pPlayerData->m_pPedClothesDesc;
-			thisPed->m_pPlayerData->m_pPedClothesDesc = nullptr;
-		}
-		delete thisPed->m_pPlayerData;
-		thisPed->m_pPlayerData = nullptr;
-	}
+	// Ped is switching from CJ to a non-CJ model: safely clean up custom allocated data if any
+	FreeCustomPedPlayerData(thisPed);
 
 	if (orig_CPed_SetModelIndex) {
 		orig_CPed_SetModelIndex(thisPed, modelIndex);
@@ -448,6 +472,16 @@ void Shutdown()
 
 	MH_DisableHook(reinterpret_cast<void*>(0x5A4220));
 	MH_RemoveHook(reinterpret_cast<void*>(0x5A4220));
+
+	for (auto* desc : g_customAllocatedClothesDesc) {
+		delete desc;
+	}
+	g_customAllocatedClothesDesc.clear();
+
+	for (auto* data : g_customAllocatedPlayerData) {
+		delete data;
+	}
+	g_customAllocatedPlayerData.clear();
 
 	g_cachedStates.clear();
 	g_bInitialized = false;
@@ -506,11 +540,13 @@ bool EnsurePedIsCJ(CPed* pPed)
 	if (!pPed->m_pPlayerData) {
 		pPed->m_pPlayerData = new CPlayerData();
 		memset(pPed->m_pPlayerData, 0, sizeof(CPlayerData));
+		g_customAllocatedPlayerData.insert(pPed->m_pPlayerData);
 	}
 
 	if (!pPed->m_pPlayerData->m_pPedClothesDesc) {
 		pPed->m_pPlayerData->m_pPedClothesDesc = new CPedClothesDesc();
 		SetDefaultCJClothes(pPed->m_pPlayerData->m_pPedClothesDesc);
+		g_customAllocatedClothesDesc.insert(pPed->m_pPlayerData->m_pPedClothesDesc);
 	}
 
 	return true;

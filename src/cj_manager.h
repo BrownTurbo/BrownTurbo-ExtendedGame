@@ -18,6 +18,7 @@ void Shutdown();
 // Ensure ped has valid CPlayerData and CPedClothesDesc
 void EnsureClothesSystemInitialized();
 bool EnsurePedIsCJ(CPed* pPed);
+void FreeCustomPedPlayerData(CPed* pPed);
 
 // Clothes & stats manipulation
 bool SetClothes(CPed* pPed, uint8_t slot, const std::string& texture, const std::string& model, bool bRebuild);
