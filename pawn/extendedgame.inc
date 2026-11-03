@@ -372,8 +372,6 @@ static stock Float:EXTGAME::PlayerWaterWaveHeight[MAX_PLAYERS];
 
 static stock bool:_IsPlayerStreamedIn(targetid, forplayerid)
 {
-    if (targetid < 0 || targetid >= MAX_PLAYERS || forplayerid < 0 || forplayerid >= MAX_PLAYERS)
-        return false;
     if (!IsPlayerConnected(targetid) || !IsPlayerConnected(forplayerid))
         return false;
     return !!IsPlayerStreamedIn(targetid, forplayerid);
@@ -407,8 +405,7 @@ static stock _SendPlayerFireProofState(recipient, targetid)
 
 static stock _SyncExtGameActorState(targetid, recipient)
 {
-    if (targetid < 0 || targetid >= MAX_PLAYERS || !IsPlayerConnected(targetid) ||
-        recipient < 0 || recipient >= MAX_PLAYERS || !IsPlayerConnected(recipient))
+    if (!IsPlayerConnected(targetid) !IsPlayerConnected(recipient))
         return 0;
 
     if (EXTGAME::PlayerCJActive[targetid] || GetPlayerSkin(targetid) == 0)
@@ -708,8 +705,8 @@ static stock _SendRawCJOutfitPacket(recipient, targetid, Float:fat, Float:muscle
  * Called automatically when targetid streams in for forplayerid
  */
 stock SyncPlayerCJForPlayer(targetid, forplayerid) {
-    if (targetid < 0 || targetid >= MAX_PLAYERS || !IsPlayerConnected(targetid)) return 0;
-    if (forplayerid < 0 || forplayerid >= MAX_PLAYERS || !IsPlayerConnected(forplayerid)) return 0;
+    if (!IsPlayerConnected(targetid)) return 0;
+    if (!IsPlayerConnected(forplayerid)) return 0;
 
     if (EXTGAME::PlayerCJActive[targetid]) {
         new slots[CJ_SLOT_COUNT];
@@ -752,7 +749,7 @@ stock SyncPlayerCJForPlayer(targetid, forplayerid) {
  * Synchronizes targetid's CJ outfit to targetid AND to all players streaming targetid
  */
 stock SyncPlayerCJ(targetid) {
-    if (targetid < 0 || targetid >= MAX_PLAYERS || !IsPlayerConnected(targetid)) return 0;
+    if (!IsPlayerConnected(targetid)) return 0;
 
     SyncPlayerCJForPlayer(targetid, targetid);
 
