@@ -42,9 +42,7 @@ void ExtendedGamePlugin::Init(HMODULE hModule)
 		WaterZones::Initialize();
 		RoadsManager::Instance().Initialize();
 		GPSManager::Instance().Initialize();
-		plugin::Events::drawRadarOverlayEvent += []() {
-			GPSManager::Instance().RenderRadarRoute();
-		};
+		GPSManager::Instance().InstallRadarHooks();
 		m_bModel0HookInstalled = true;
 		ClientLog(LogLevel::Info, "Model CJ, gameplay extensions, textdraw rotation, water zones, roads and GPS hooks initialized");
 	}
@@ -91,6 +89,7 @@ void ExtendedGamePlugin::InitializeRakHookThread()
 				if (rakhook::initialize()) {
 					m_bRakHookReady = true;
 					PacketHandler::Initialize();
+					GPSManager::Instance().InstallRadarHooks();
 					ClientLog(LogLevel::Info, std::format("rakhook initialized successfully (samp_version={})", static_cast<int>(rakhook::samp_version())));
 					SendMsg(0x00FF00AA, "{00FF00}[BrownTurbo-ExtendedGame]{FFFFFF} ASI Plugin initialized.");
 					break;

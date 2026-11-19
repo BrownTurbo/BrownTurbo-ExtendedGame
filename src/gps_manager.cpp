@@ -12,10 +12,33 @@
 #include <CMessages.h>
 #include <CPed.h>
 #include <CVehicle.h>
+#include <CMenuManager.h>
+#include <RenderWare.h>
 #include <common.h>
 
 #include <algorithm>
 #include <cmath>
+#include <format>
+
+using RadarOverlay_t = void(__cdecl*)(bool inMenu);
+static RadarOverlay_t s_origRadarOverlay = nullptr;
+static RadarOverlay_t s_origMenuMapOverlay = nullptr;
+
+static void __cdecl Hooked_RadarOverlay(bool inMenu)
+{
+	if (s_origRadarOverlay) {
+		s_origRadarOverlay(inMenu);
+	}
+	GPSManager::Instance().RenderRadarRoute(inMenu);
+}
+
+static void __cdecl Hooked_MenuMapOverlay(bool inMenu)
+{
+	if (s_origMenuMapOverlay) {
+		s_origMenuMapOverlay(inMenu);
+	}
+	GPSManager::Instance().RenderRadarRoute(inMenu);
+}
 
 GPSManager& GPSManager::Instance()
 {
@@ -27,9 +50,47 @@ bool GPSManager::Initialize()
 {
 	if (m_bInitialized) return true;
 
-	ClientLog(LogLevel::Info, "GPSManager: Initialized with CPathFind engine.");
+	InstallRadarHooks();
+	ClientLog(LogLevel::Info, "GPSManager: Initialized with CPathFind engine and radar hooks.");
 	m_bInitialized = true;
 	return true;
+}
+
+void GPSManager::InstallRadarHooks()
+{
+	// 1. Hook 0x5869BF (HUD minimap gang overlay call inside CRadar::DrawRadarMap)
+	uint8_t* pRadarCall = reinterpret_cast<uint8_t*>(0x5869BF);
+	if (*pRadarCall == 0xE8) {
+		int32_t curRel = *reinterpret_cast<int32_t*>(pRadarCall + 1);
+		uintptr_t curDest = reinterpret_cast<uintptr_t>(pRadarCall + 5 + curRel);
+		if (curDest != reinterpret_cast<uintptr_t>(&Hooked_RadarOverlay)) {
+			s_origRadarOverlay = reinterpret_cast<RadarOverlay_t>(curDest);
+			DWORD oldProtect = 0;
+			if (VirtualProtect(pRadarCall, 5, PAGE_EXECUTE_READWRITE, &oldProtect)) {
+				int32_t newRel = static_cast<int32_t>(reinterpret_cast<uintptr_t>(&Hooked_RadarOverlay) - (reinterpret_cast<uintptr_t>(pRadarCall) + 5));
+				*reinterpret_cast<int32_t*>(pRadarCall + 1) = newRel;
+				VirtualProtect(pRadarCall, 5, oldProtect, &oldProtect);
+				ClientLog(LogLevel::Info, std::format("GPSManager: Installed RadarOverlay hook at 0x5869BF (target=0x{:X})", curDest));
+			}
+		}
+	}
+
+	// 2. Hook 0x5759E4 (Pause menu map gang overlay call inside CMenuManager::PrintMap)
+	uint8_t* pMenuCall = reinterpret_cast<uint8_t*>(0x5759E4);
+	if (*pMenuCall == 0xE8) {
+		int32_t curRel = *reinterpret_cast<int32_t*>(pMenuCall + 1);
+		uintptr_t curDest = reinterpret_cast<uintptr_t>(pMenuCall + 5 + curRel);
+		if (curDest != reinterpret_cast<uintptr_t>(&Hooked_MenuMapOverlay)) {
+			s_origMenuMapOverlay = reinterpret_cast<RadarOverlay_t>(curDest);
+			DWORD oldProtect = 0;
+			if (VirtualProtect(pMenuCall, 5, PAGE_EXECUTE_READWRITE, &oldProtect)) {
+				int32_t newRel = static_cast<int32_t>(reinterpret_cast<uintptr_t>(&Hooked_MenuMapOverlay) - (reinterpret_cast<uintptr_t>(pMenuCall) + 5));
+				*reinterpret_cast<int32_t*>(pMenuCall + 1) = newRel;
+				VirtualProtect(pMenuCall, 5, oldProtect, &oldProtect);
+				ClientLog(LogLevel::Info, std::format("GPSManager: Installed MenuMapOverlay hook at 0x5759E4 (target=0x{:X})", curDest));
+			}
+		}
+	}
 }
 
 void GPSManager::Shutdown()
@@ -233,6 +294,14 @@ float GPSManager::GetRemainingDistance() const
 
 void GPSManager::Process()
 {
+	// Periodically verify hooks remain installed (in case SA-MP or another plugin re-patched)
+	static uint32_t s_lastHookCheckTick = 0;
+	uint32_t currentTick = GetTickCount();
+	if (currentTick - s_lastHookCheckTick >= 3000) {
+		s_lastHookCheckTick = currentTick;
+		InstallRadarHooks();
+	}
+
 	if (!m_activeRoute.active || m_activeRoute.waypoints.empty()) return;
 
 	CPed* pPlayer = FindPlayerPed();
@@ -265,7 +334,6 @@ void GPSManager::Process()
 
 	// 3. Auto-reroute if strayed more than 80m off the upcoming waypoint
 	if (m_navFlags & GPS_NAV_FLAG_AUTO_REROUTE) {
-		uint32_t currentTick = GetTickCount();
 		if (currentTick - m_lastRerouteTick >= 3000) {
 			if (currentIdx < m_activeRoute.waypoints.size()) {
 				float distToCurrentWp = (playerPos - m_activeRoute.waypoints[currentIdx]).Magnitude();
@@ -280,45 +348,160 @@ void GPSManager::Process()
 	}
 }
 
-void GPSManager::RenderRadarRoute()
+void GPSManager::RenderRadarRoute(bool inMenu)
 {
-	if (!m_activeRoute.active || m_activeRoute.waypoints.size() < 2) return;
+	if (!m_activeRoute.active || m_activeRoute.waypoints.empty()) return;
 	if (!(m_navFlags & GPS_NAV_FLAG_RADAR_LINE)) return;
+
+	CPed* pPlayer = FindPlayerPed(-1);
+	if (!pPlayer) return;
+
+	bool bDrawingMenuMap = inMenu || FrontEndMenuManager.m_bDrawRadarOrMap;
+	if (!bDrawingMenuMap && pPlayer->m_nAreaCode != 0) return;
+
+	CVector playerPos = pPlayer->GetPosition();
+	CVehicle* pVehicle = FindPlayerVehicle(-1, false);
+	if (pVehicle) {
+		playerPos = pVehicle->GetPosition();
+	}
 
 	size_t startIdx = m_activeRoute.currentWaypointIndex;
 	if (startIdx >= m_activeRoute.waypoints.size()) return;
 
-	CRGBA lineColor(255, 60, 60, 220); // Bright GPS Red/Coral line
-	float lineWidth = 4.0f;
+	// Build sequence of points starting directly from current player/vehicle 2D position
+	std::vector<CVector2D> points;
+	points.reserve(m_activeRoute.waypoints.size() - startIdx + 2);
+	points.push_back(CVector2D(playerPos.x, playerPos.y));
 
-	for (size_t i = startIdx; i + 1 < m_activeRoute.waypoints.size(); ++i) {
-		const auto& p1 = m_activeRoute.waypoints[i];
-		const auto& p2 = m_activeRoute.waypoints[i + 1];
+	for (size_t i = startIdx; i < m_activeRoute.waypoints.size(); ++i) {
+		points.push_back(CVector2D(m_activeRoute.waypoints[i].x, m_activeRoute.waypoints[i].y));
+	}
 
-		CVector2D radar1, radar2;
-		CRadar::TransformRealWorldPointToRadarSpace(radar1, CVector2D(p1.x, p1.y));
-		CRadar::TransformRealWorldPointToRadarSpace(radar2, CVector2D(p2.x, p2.y));
+	CVector2D dest2D(m_destination.x, m_destination.y);
+	if ((points.back() - dest2D).Magnitude() > 3.0f) {
+		points.push_back(dest2D);
+	}
 
-		CVector2D screen1, screen2;
-		CRadar::TransformRadarPointToScreenSpace(screen1, radar1);
-		CRadar::TransformRadarPointToScreenSpace(screen2, radar2);
+	if (points.size() < 2) return;
 
-		// Compute perpendicular offset for line width
-		CVector2D dir = screen2 - screen1;
-		float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
-		if (len < 0.001f) continue;
+	// Configure RenderWare 2D render states
+	RwRenderStateSet(rwRENDERSTATETEXTURERASTER, (void*)NULL);
+	RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)FALSE);
+	RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)FALSE);
+	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)TRUE);
+	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDSRCALPHA);
+	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDINVSRCALPHA);
 
-		CVector2D norm = { -dir.y / len * (lineWidth * 0.5f), dir.x / len * (lineWidth * 0.5f) };
+	struct RenderSegment {
+		CVector2D a;
+		CVector2D b;
+		CVector2D norm;
+	};
+	std::vector<RenderSegment> segments;
+	segments.reserve(points.size());
 
-		float x1 = screen1.x - norm.x;
-		float y1 = screen1.y - norm.y;
-		float x2 = screen2.x - norm.x;
-		float y2 = screen2.y - norm.y;
-		float x3 = screen2.x + norm.x;
-		float y3 = screen2.y + norm.y;
-		float x4 = screen1.x + norm.x;
-		float y4 = screen1.y + norm.y;
+	for (size_t i = 0; i + 1 < points.size(); ++i) {
+		const auto& ptA = points[i];
+		const auto& ptB = points[i + 1];
 
-		CSprite2d::Draw2DPolygon(x1, y1, x2, y2, x3, y3, x4, y4, lineColor);
+		if (bDrawingMenuMap) {
+			// Pause Menu Map: full-screen projection without circular clipping
+			CVector2D rA, rB;
+			CRadar::TransformRealWorldPointToRadarSpace(rA, ptA);
+			CRadar::TransformRealWorldPointToRadarSpace(rB, ptB);
+
+			CVector2D scA, scB;
+			CRadar::TransformRadarPointToScreenSpace(scA, rA);
+			CRadar::TransformRadarPointToScreenSpace(scB, rB);
+
+			CVector2D dir = scB - scA;
+			float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+			if (len < 0.5f) continue;
+
+			CVector2D norm = { -dir.y / len, dir.x / len };
+			segments.push_back({ scA, scB, norm });
+		} else {
+			// HUD Minimap: radar is circular (radius = 1.0f in radar space)
+			CVector2D rA, rB;
+			CRadar::TransformRealWorldPointToRadarSpace(rA, ptA);
+			CRadar::TransformRealWorldPointToRadarSpace(rB, ptB);
+
+			CVector2D d = rB - rA;
+			float A_sq = d.x * d.x + d.y * d.y;
+			if (A_sq < 0.000001f) continue;
+
+			// Line-circle intersection against unit circle R = 1.0f
+			float B_coeff = 2.0f * (rA.x * d.x + rA.y * d.y);
+			float C_coeff = (rA.x * rA.x + rA.y * rA.y) - 1.0f;
+
+			float t0 = 0.0f;
+			float t1 = 1.0f;
+
+			float discr = B_coeff * B_coeff - 4.0f * A_sq * C_coeff;
+			if (discr < 0.0f) {
+				if (C_coeff > 0.0f) continue; // Completely outside circle
+			} else {
+				float sqrtDiscr = std::sqrt(discr);
+				float tEntry = (-B_coeff - sqrtDiscr) / (2.0f * A_sq);
+				float tExit  = (-B_coeff + sqrtDiscr) / (2.0f * A_sq);
+
+				t0 = (std::max)(0.0f, tEntry);
+				t1 = (std::min)(1.0f, tExit);
+				if (t0 >= t1) continue;
+			}
+
+			CVector2D clipped_rA = rA + d * t0;
+			CVector2D clipped_rB = rA + d * t1;
+
+			CVector2D scA, scB;
+			CRadar::TransformRadarPointToScreenSpace(scA, clipped_rA);
+			CRadar::TransformRadarPointToScreenSpace(scB, clipped_rB);
+
+			CVector2D dir = scB - scA;
+			float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+			if (len < 0.5f) continue;
+
+			CVector2D norm = { -dir.y / len, dir.x / len };
+			segments.push_back({ scA, scB, norm });
+		}
+	}
+
+	if (segments.empty()) return;
+
+	// Pass 1: Dark outline for contrast across all radar textures
+	const float outlineHalfWidth = 6.0f * 0.5f;
+	const CRGBA outlineColor(10, 10, 10, 200);
+	for (const auto& seg : segments) {
+		CVector2D n = seg.norm * outlineHalfWidth;
+		CSprite2d::Draw2DPolygon(
+			seg.a.x - n.x, seg.a.y - n.y,
+			seg.b.x - n.x, seg.b.y - n.y,
+			seg.b.x + n.x, seg.b.y + n.y,
+			seg.a.x + n.x, seg.a.y + n.y,
+			outlineColor
+		);
+	}
+
+	// Pass 2: High-visibility GPS Coral-Red core line
+	const float coreHalfWidth = 4.0f * 0.5f;
+	const CRGBA coreColor(255, 60, 60, 235);
+	for (const auto& seg : segments) {
+		CVector2D n = seg.norm * coreHalfWidth;
+		CSprite2d::Draw2DPolygon(
+			seg.a.x - n.x, seg.a.y - n.y,
+			seg.b.x - n.x, seg.b.y - n.y,
+			seg.b.x + n.x, seg.b.y + n.y,
+			seg.a.x + n.x, seg.a.y + n.y,
+			coreColor
+		);
+	}
+
+	// Pass 3: Draw joint caps to connect segment corners seamlessly
+	for (const auto& seg : segments) {
+		CSprite2d::DrawRect(CRect(seg.a.x - 2.0f, seg.a.y - 2.0f, seg.a.x + 2.0f, seg.a.y + 2.0f), coreColor);
+	}
+	if (!segments.empty()) {
+		const auto& endPt = segments.back().b;
+		CSprite2d::DrawRect(CRect(endPt.x - 2.0f, endPt.y - 2.0f, endPt.x + 2.0f, endPt.y + 2.0f), coreColor);
 	}
 }

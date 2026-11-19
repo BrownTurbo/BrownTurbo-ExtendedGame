@@ -44,7 +44,8 @@ public:
 
 	// Per-frame game process & rendering
 	void Process();
-	void RenderRadarRoute();
+	void RenderRadarRoute(bool inMenu = false);
+	void InstallRadarHooks();
 
 private:
 	GPSManager() = default;
