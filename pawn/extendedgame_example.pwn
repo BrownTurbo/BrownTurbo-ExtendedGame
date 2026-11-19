@@ -11,8 +11,30 @@ static stock PlayerText:g_DemoPlayerTextDraw[MAX_PLAYERS] = {PlayerText:INVALID_
 static stock PlayerText:g_DemoPlayerSpriteTD[MAX_PLAYERS] = {PlayerText:INVALID_TEXT_DRAW, ...};
 static stock g_DemoWaterZone = INVALID_WATER_ZONE;
 
+// Demo custom roads and road side detection tracking
+#define MAX_DEMO_ROAD_OBJECTS (16)
+static stock g_DemoRoadObjects[MAX_PLAYERS][MAX_DEMO_ROAD_OBJECTS];
+static stock g_DemoRoadCount[MAX_PLAYERS] = {0, ...};
+static stock bool:g_DemoRoadCheck[MAX_PLAYERS] = {false, ...};
+
+static stock CleanupPlayerDemoRoads(playerid) {
+    for (new i = 0; i < g_DemoRoadCount[playerid]; i++) {
+        if (g_DemoRoadObjects[playerid][i] != INVALID_OBJECT_ID) {
+            DestroyObject(g_DemoRoadObjects[playerid][i]);
+            g_DemoRoadObjects[playerid][i] = INVALID_OBJECT_ID;
+        }
+    }
+    g_DemoRoadCount[playerid] = 0;
+    g_DemoRoadCheck[playerid] = false;
+}
+
 public OnFilterScriptInit() {
     PR_Init();
+    for (new i = 0; i < MAX_PLAYERS; i++) {
+        for (new j = 0; j < MAX_DEMO_ROAD_OBJECTS; j++) {
+            g_DemoRoadObjects[i][j] = INVALID_OBJECT_ID;
+        }
+    }
     print("==========================================================");
     print("   BrownTurbo-ExtendedGame FS Loaded      ");
     print("==========================================================");
@@ -37,6 +59,7 @@ public OnFilterScriptExit() {
             PlayerTextDrawDestroy(i, g_DemoPlayerSpriteTD[i]);
             g_DemoPlayerSpriteTD[i] = PlayerText:INVALID_TEXT_DRAW;
         }
+        CleanupPlayerDemoRoads(i);
     }
     if (g_DemoWaterZone != INVALID_WATER_ZONE) {
         DestroyWaterZone(g_DemoWaterZone);
@@ -54,6 +77,7 @@ public OnPlayerDisconnect(playerid, reason) {
         PlayerTextDrawDestroy(playerid, g_DemoPlayerSpriteTD[playerid]);
         g_DemoPlayerSpriteTD[playerid] = PlayerText:INVALID_TEXT_DRAW;
     }
+    CleanupPlayerDemoRoads(playerid);
     return 1;
 }
 
@@ -63,6 +87,7 @@ public OnPlayerExtendedGameCheck(playerid, bool:installed, version) {
     if (installed) {
         format(msg, sizeof(msg), "[ExtendedGame] BrownTurbo-ExtendedGame ASI detected! (v%d.%d.%d alpha)", (version >> 8) & 0xFF, (version >> 4) & 0x0F, version & 0x0F);
         SendClientMessage(playerid, 0x00FF00AA, msg);
+        SendClientMessage(playerid, 0x00FFCCAA, "  Type /eghelp for all ExtendedGame commands (GPS, Roads, Weather, etc.)");
     } else {
         SendClientMessage(playerid, 0xFF0000AA, "[ExtendedGame] Warning: BrownTurbo-ExtendedGame ASI is not installed!");
         SendClientMessage(playerid, 0xFFFF00AA, "  Please install brownturbo-extendedgame.asi into your GTA root for extended features.");
@@ -137,6 +162,29 @@ stock bool:sscanf_two_floats(const params[], &Float:f1, &Float:f2) {
     return true;
 }
 
+stock bool:sscanf_three_floats(const params[], &Float:f1, &Float:f2, &Float:f3) {
+    new s1[32], s2[32], s3[32];
+    new i = 0, j = 0;
+    while (params[i] == ' ') i++;
+    if (params[i] == '\0') return false;
+    while (params[i] != '\0' && params[i] != ' ') s1[j++] = params[i++];
+    s1[j] = '\0';
+    while (params[i] == ' ') i++;
+    if (params[i] == '\0') return false;
+    j = 0;
+    while (params[i] != '\0' && params[i] != ' ') s2[j++] = params[i++];
+    s2[j] = '\0';
+    while (params[i] == ' ') i++;
+    if (params[i] == '\0') return false;
+    j = 0;
+    while (params[i] != '\0' && params[i] != ' ') s3[j++] = params[i++];
+    s3[j] = '\0';
+    f1 = floatstr(s1);
+    f2 = floatstr(s2);
+    f3 = floatstr(s3);
+    return true;
+}
+
 stock bool:_ParseFloatStrict(const input[], &Float:value) {
     new i = 0, digits = 0, hasDecimal = 0;
     while (input[i] == ' ') i++;
@@ -170,6 +218,31 @@ stock bool:sscanf_int_string(const params[], &val, str[]) {
 public OnPlayerCommandText(playerid, cmdtext[]) {
     new cmd[32], params[128];
     sscanf_custom(cmdtext, cmd, params);
+
+    // Command: /eghelp or /extendedhelp - Comprehensive guide for all features
+    if (!strcmp(cmd, "/eghelp", true) || !strcmp(cmd, "/extendedhelp", true)) {
+        if (!strcmp(params, "gps", true) || !strcmp(params, "roads", true) || !strcmp(params, "road", true)) {
+            SendClientMessage(playerid, 0x00FFCCAA, "==== [ExtendedGame GPS & Roads Commands] ====");
+            SendClientMessage(playerid, 0xFFFFFFFF, "  /gps <preset | x y z> - Start GPS navigation to coords or preset (ls, bank, pier, airport, sf, lv)");
+            SendClientMessage(playerid, 0xFFFFFFFF, "  /cancelgps (or /nogps) - Cancel active GPS route and clear radar line & marker");
+            SendClientMessage(playerid, 0xFFFFFFFF, "  /roadcheck [0/1] [autowarn: 0/1] - Toggle road side detection & wrong-way warnings");
+            SendClientMessage(playerid, 0xFFFFFFFF, "  /traffic [lookahead_dist] - Query live traffic & lane status (deviation, incline, target)");
+            SendClientMessage(playerid, 0xFFFFFFFF, "  /spawnroad [modelid] - Spawn & register custom road object at current facing angle");
+            SendClientMessage(playerid, 0xFFFFFFFF, "  /spawnsegment - Register a 30m custom virtual road segment in front of you");
+            SendClientMessage(playerid, 0xFFFFFFFF, "  /clearroads - Clear all custom road objects and segments");
+            return 1;
+        }
+        SendClientMessage(playerid, 0x00FFCCAA, "==== [BrownTurbo-ExtendedGame Commands] ====");
+        SendClientMessage(playerid, 0xFFFF00AA, "  GPS & Roads: /gps, /cancelgps, /roadcheck, /traffic, /spawnroad, /spawnsegment, /clearroads");
+        SendClientMessage(playerid, 0xFFFFFFFF, "  CJ & Clothes: /setcj, /shirt, /hair, /pants, /shoes, /glasses, /hat, /body, /tattoo, /resetcj, /bare, /outfit");
+        SendClientMessage(playerid, 0xFFFFFFFF, "  Environment: /sun, /moon, /suncolor, /mooncolor, /stars, /lowclouds, /fluffyclouds, /rainbow, /time, /weather");
+        SendClientMessage(playerid, 0xFFFFFFFF, "  Water: /waterlevel, /resetwater, /waterwaves, /wzcreate, /wzlevel, /wzdestroy");
+        SendClientMessage(playerid, 0xFFFFFFFF, "  HUD & Radar: /hud, /hudcol, /hudwanted, /hudradio, /hudclock, /planeradar, /cursor, /ispause");
+        SendClientMessage(playerid, 0xFFFFFFFF, "  Physics & Visuals: /jetpack, /jetpos, /jetrot, /vehicleblur, /nv, /tv, /noreload, /oxygen, /pedanims");
+        SendClientMessage(playerid, 0xFFFFFFFF, "  TextDraws: /tdhelp, /tdcreate, /tdrotate, /ptdcreate, /ptdrotate");
+        SendClientMessage(playerid, 0x00FFCCAA, "Type '/eghelp roads' for detailed GPS & Road Tracing commands.");
+        return 1;
+    }
 
     // Command: /setcj or /cjskin - Gives skin 0 and default clothes
     if (!strcmp(cmd, "/setcj", true) || !strcmp(cmd, "/cjskin", true)) {
@@ -1430,6 +1503,181 @@ public OnPlayerCommandText(playerid, cmdtext[]) {
         return 1;
     }
 
+    // --- GPS Navigation Commands ---
+    if (!strcmp(cmd, "/gps", true)) {
+        if (params[0] == '\0') {
+            SendClientMessage(playerid, 0xFFFF00AA, "Usage: /gps <preset | x y z>");
+            SendClientMessage(playerid, 0xAAAAAAFF, "  Presets: ls, grove, bank, cityhall, pier, airport, sf, lv, chilliad");
+            SendClientMessage(playerid, 0xAAAAAAFF, "  Example: /gps bank   OR   /gps 1543.2 -1675.8 13.5");
+            return 1;
+        }
+
+        new Float:destX = 0.0, Float:destY = 0.0, Float:destZ = 0.0;
+        new presetName[32];
+        presetName[0] = '\0';
+
+        if (!strcmp(params, "ls", true) || !strcmp(params, "grove", true)) {
+            destX = 2492.0; destY = -1668.0; destZ = 13.3;
+            presetName = "Grove Street (LS)";
+        } else if (!strcmp(params, "bank", true) || !strcmp(params, "cityhall", true)) {
+            destX = 1481.0; destY = -1771.0; destZ = 18.7;
+            presetName = "City Hall / LSPD";
+        } else if (!strcmp(params, "pier", true)) {
+            destX = 380.0; destY = -2072.0; destZ = 7.8;
+            presetName = "Santa Maria Pier";
+        } else if (!strcmp(params, "airport", true) || !strcmp(params, "lsairport", true)) {
+            destX = 1975.0; destY = -2180.0; destZ = 13.5;
+            presetName = "Los Santos Airport";
+        } else if (!strcmp(params, "sf", true)) {
+            destX = -1420.0; destY = -287.0; destZ = 14.1;
+            presetName = "San Fierro Station";
+        } else if (!strcmp(params, "lv", true)) {
+            destX = 2036.0; destY = 1007.0; destZ = 10.8;
+            presetName = "The Strip (Las Venturas)";
+        } else if (!strcmp(params, "chilliad", true)) {
+            destX = -2312.0; destY = -1645.0; destZ = 483.0;
+            presetName = "Mount Chiliad Summit";
+        } else {
+            if (!sscanf_three_floats(params, destX, destY, destZ)) {
+                SendClientMessage(playerid, 0xFF0000AA, "[ExtendedGame] Invalid coordinates. Usage: /gps <x y z> or preset name.");
+                return 1;
+            }
+        }
+
+        EXTGAME::SetGPSDestination(playerid, destX, destY, destZ, GPS_FLAG_ALL);
+        new msg[144];
+        if (presetName[0] != '\0') {
+            format(msg, sizeof(msg), "[ExtendedGame] GPS route activated -> %s at (%.1f, %.1f, %.1f). Radar path & 3D marker enabled!", presetName, destX, destY, destZ);
+        } else {
+            format(msg, sizeof(msg), "[ExtendedGame] GPS route activated -> (%.1f, %.1f, %.1f). Radar path & 3D marker enabled!", destX, destY, destZ);
+        }
+        SendClientMessage(playerid, 0x00FF00AA, msg);
+        return 1;
+    }
+
+    if (!strcmp(cmd, "/cancelgps", true) || !strcmp(cmd, "/nogps", true)) {
+        EXTGAME::CancelGPS(playerid);
+        SendClientMessage(playerid, 0xFFFF00AA, "[ExtendedGame] GPS Navigation cancelled and radar path cleared.");
+        return 1;
+    }
+
+    // --- Road Side Check & Wrong-Way Detection ---
+    if (!strcmp(cmd, "/roadcheck", true)) {
+        new bool:newToggle = !g_DemoRoadCheck[playerid];
+        new bool:autoWarn = true;
+        new interval = 3000;
+
+        if (params[0] != '\0') {
+            new s1[32], s2[32];
+            if (sscanf_two_strings(params, s1, s2)) {
+                newToggle = (strval(s1) != 0);
+                autoWarn = (strval(s2) != 0);
+            } else {
+                newToggle = (strval(params) != 0);
+            }
+        }
+
+        g_DemoRoadCheck[playerid] = newToggle;
+        EXTGAME::ToggleRoadSideCheck(playerid, newToggle, autoWarn, interval);
+        new msg[144];
+        if (newToggle) {
+            format(msg, sizeof(msg), "[ExtendedGame] Road side detection ENABLED (Auto-warn: %s, Interval: %dms).", autoWarn ? "YES" : "NO", interval);
+            SendClientMessage(playerid, 0x00FF00AA, msg);
+            SendClientMessage(playerid, 0xAAAAAAFF, "  Driving against traffic will notify the server and trigger alerts!");
+        } else {
+            SendClientMessage(playerid, 0xFFFF00AA, "[ExtendedGame] Road side detection DISABLED.");
+        }
+        return 1;
+    }
+
+    // --- Traffic Tracing Query ---
+    if (!strcmp(cmd, "/traffic", true)) {
+        new Float:lookahead = 12.0;
+        if (params[0] != '\0') {
+            lookahead = floatstr(params);
+            if (lookahead < 1.0) lookahead = 1.0;
+            if (lookahead > 100.0) lookahead = 100.0;
+        }
+
+        EXTGAME::RequestTrafficQuery(playerid, lookahead);
+        new msg[144];
+        format(msg, sizeof(msg), "[ExtendedGame] Querying traffic & lane status (lookahead: %.1fm)...", lookahead);
+        SendClientMessage(playerid, 0x00FFCCAA, msg);
+        return 1;
+    }
+
+    // --- Custom Road Objects & Virtual Segments ---
+    if (!strcmp(cmd, "/spawnroad", true)) {
+        if (g_DemoRoadCount[playerid] >= MAX_DEMO_ROAD_OBJECTS) {
+            SendClientMessage(playerid, 0xFF0000AA, "[ExtendedGame] Maximum custom demo road objects reached (16). Use /clearroads first.");
+            return 1;
+        }
+
+        new modelid = 18450; // Road asphalt section model
+        if (params[0] != '\0') {
+            modelid = strval(params);
+            if (modelid <= 0) modelid = 18450;
+        }
+
+        new Float:px, Float:py, Float:pz, Float:pa;
+        GetPlayerPos(playerid, px, py, pz);
+        GetPlayerFacingAngle(playerid, pa);
+
+        // Place object 10m directly ahead of player
+        new Float:spawnX = px - (10.0 * floatsin(pa, degrees));
+        new Float:spawnY = py + (10.0 * floatcos(pa, degrees));
+        new Float:spawnZ = pz - 0.5;
+
+        new objId = CreateObject(modelid, spawnX, spawnY, spawnZ, 0.0, 0.0, pa);
+        if (objId == INVALID_OBJECT_ID) {
+            SendClientMessage(playerid, 0xFF0000AA, "[ExtendedGame] Failed to create object (invalid model or limit).");
+            return 1;
+        }
+
+        g_DemoRoadObjects[playerid][g_DemoRoadCount[playerid]++] = objId;
+
+        // Register custom road object with client plugin
+        EXTGAME::RegisterCustomRoadObject(playerid, objId, modelid, spawnX, spawnY, spawnZ, 0.0, 0.0, pa, 1, 1, 10.0);
+
+        new msg[144];
+        format(msg, sizeof(msg), "[ExtendedGame] Spawned custom road object #%d (Model %d, ObjID %d) at (%.1f, %.1f, %.1f)!",
+            g_DemoRoadCount[playerid], modelid, objId, spawnX, spawnY, spawnZ);
+        SendClientMessage(playerid, 0x00FF00AA, msg);
+        SendClientMessage(playerid, 0xAAAAAAFF, "  Traffic & GPS systems now recognize this object as a 2-lane road!");
+        return 1;
+    }
+
+    if (!strcmp(cmd, "/spawnsegment", true)) {
+        new Float:px, Float:py, Float:pz, Float:pa;
+        GetPlayerPos(playerid, px, py, pz);
+        GetPlayerFacingAngle(playerid, pa);
+
+        // Start at player pos, extend 30m forward
+        new Float:startX = px;
+        new Float:startY = py;
+        new Float:startZ = pz;
+        new Float:endX = px - (30.0 * floatsin(pa, degrees));
+        new Float:endY = py + (30.0 * floatcos(pa, degrees));
+        new Float:endZ = pz;
+
+        // Register 2-lane virtual road segment
+        EXTGAME::RegisterCustomRoadSegment(playerid, startX, startY, startZ, endX, endY, endZ, 1, 1, 4.0);
+
+        new msg[144];
+        format(msg, sizeof(msg), "[ExtendedGame] Registered 30m virtual road segment: (%.1f, %.1f) -> (%.1f, %.1f).",
+            startX, startY, endX, endY);
+        SendClientMessage(playerid, 0x00FF00AA, msg);
+        SendClientMessage(playerid, 0xAAAAAAFF, "  Segment added to traffic tracer (1 left lane, 1 right lane, width: 4m).");
+        return 1;
+    }
+
+    if (!strcmp(cmd, "/clearroads", true)) {
+        CleanupPlayerDemoRoads(playerid);
+        EXTGAME::ClearCustomRoads(playerid);
+        SendClientMessage(playerid, 0xFFFF00AA, "[ExtendedGame] All custom road objects and segments cleared.");
+        return 1;
+    }
+
     return 0;
 }
 
@@ -1445,5 +1693,89 @@ public OnPlayerClosePauseMenu(playerid) {
 
 public OnPlayerEnterPauseSubmenu(playerid, from, to) {
     printf("[ExtendedGame] Player %d entered pause submenu (from %d to %d).", playerid, from, to);
+    return 1;
+}
+
+// ==============================================================================
+// GPS & Roads Event Callbacks
+// ==============================================================================
+
+public OnPlayerGPSEvent(playerid, eventType, Float:remainingDistance) {
+    new msg[144];
+    switch (eventType) {
+        case GPS_EVENT_DESTINATION_REACHED: {
+            format(msg, sizeof(msg), "[GPS] You have reached your destination! (Remaining distance: %.1fm)", remainingDistance);
+            SendClientMessage(playerid, 0x00FF00AA, msg);
+            GameTextForPlayer(playerid, "~g~DESTINATION REACHED!", 4000, 1);
+        }
+        case GPS_EVENT_REROUTED: {
+            format(msg, sizeof(msg), "[GPS] Route recalculating... New remaining distance: %.1fm", remainingDistance);
+            SendClientMessage(playerid, 0xFFFF00AA, msg);
+        }
+        case GPS_EVENT_PATH_NOT_FOUND: {
+            SendClientMessage(playerid, 0xFF0000AA, "[GPS] Error: No viable road/path found to destination!");
+        }
+        default: {
+            format(msg, sizeof(msg), "[GPS] Navigation event %d (Distance: %.1fm)", eventType, remainingDistance);
+            SendClientMessage(playerid, 0x00FFFFFF, msg);
+        }
+    }
+    return 1;
+}
+
+public OnPlayerRoadStatusChange(playerid, status, closestNode, Float:distanceToRoad, Float:roadAngle, Float:vehicleAngle) {
+    new msg[144];
+    switch (status) {
+        case ROAD_STATUS_ON_RIGHT_SIDE: {
+            format(msg, sizeof(msg), "[Traffic] Correct lane (RIGHT SIDE) | Node: %d | Dist: %.1fm | Angle diff: %.1f deg",
+                closestNode, distanceToRoad, floatabs(vehicleAngle - roadAngle));
+            SendClientMessage(playerid, 0x33CC33AA, msg);
+        }
+        case ROAD_STATUS_ON_WRONG_SIDE: {
+            format(msg, sizeof(msg), "[Traffic] WRONG WAY WARNING! Against traffic flow | Node: %d | Dist: %.1fm",
+                closestNode, distanceToRoad);
+            SendClientMessage(playerid, 0xFF3333AA, msg);
+            GameTextForPlayer(playerid, "~r~WRONG WAY!", 2000, 5);
+        }
+        case ROAD_STATUS_ON_INTERSECTION: {
+            format(msg, sizeof(msg), "[Traffic] Entering/Inside INTERSECTION | Node: %d | Dist: %.1fm",
+                closestNode, distanceToRoad);
+            SendClientMessage(playerid, 0xFFFF00AA, msg);
+        }
+        case ROAD_STATUS_NO_CONNECTING_NODE: {
+            format(msg, sizeof(msg), "[Traffic] Isolated road node (%d) - No connecting link found.", closestNode);
+            SendClientMessage(playerid, 0xAAAAAAFF, msg);
+        }
+        case ROAD_STATUS_NO_NAVI_FOUND: {
+            format(msg, sizeof(msg), "[Traffic] Off-road or no navigation node nearby (Dist: %.1fm).", distanceToRoad);
+            SendClientMessage(playerid, 0x888888FF, msg);
+        }
+        default: {
+            format(msg, sizeof(msg), "[Traffic] Road status change: %d (Node: %d, Dist: %.1fm)", status, closestNode, distanceToRoad);
+            SendClientMessage(playerid, 0xCCCCCCFF, msg);
+        }
+    }
+    return 1;
+}
+
+public OnPlayerTrafficQuery(playerid, status, side, laneIndex, totalLanes, Float:lateralDeviation, Float:targetX, Float:targetY, Float:targetZ, Float:inclineDeg, bool:isCustomRoad, customObjectId) {
+    new msg[144];
+    new sideStr[24];
+    if (side == ROAD_SIDE_RIGHT) sideStr = "Right (Correct)";
+    else if (side == ROAD_SIDE_LEFT) sideStr = "Left (Wrong)";
+    else sideStr = "Unknown/Middle";
+
+    format(msg, sizeof(msg), "[Traffic Query] Side: %s | Lane: %d/%d | Deviation: %.2fm | Incline: %.1f deg",
+        sideStr, laneIndex, totalLanes, lateralDeviation, inclineDeg);
+    SendClientMessage(playerid, 0x00FFCCAA, msg);
+
+    if (isCustomRoad) {
+        format(msg, sizeof(msg), "  Custom Road: YES (ObjID: %d) | Target: (%.1f, %.1f, %.1f)",
+            customObjectId, targetX, targetY, targetZ);
+    } else {
+        format(msg, sizeof(msg), "  Official Road: YES | Target: (%.1f, %.1f, %.1f)",
+            targetX, targetY, targetZ);
+    }
+    SendClientMessage(playerid, 0x00FFCCAA, msg);
     return 1;
 }

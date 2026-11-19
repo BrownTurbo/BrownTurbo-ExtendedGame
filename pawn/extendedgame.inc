@@ -104,6 +104,50 @@
 // ExtendedGame Vehicle Speed Blur Motion Action
 #define EXTENDEDGAME_ACTION_TOGGLE_VEHICLE_BLUR       (60)
 
+// ExtendedGame Traffic Roads Tracing & GPS Navigation Actions
+#define EXTENDEDGAME_ACTION_GPS_SET_DESTINATION       (61)
+#define EXTENDEDGAME_ACTION_GPS_CANCEL                (62)
+#define EXTENDEDGAME_ACTION_SET_ROAD_CHECK            (63)
+#define EXTENDEDGAME_ACTION_ROAD_STATUS_EVENT         (64)
+#define EXTENDEDGAME_ACTION_GPS_EVENT                 (65)
+
+// ExtendedGame Custom Roads & Traffic Tracing Actions
+#define EXTENDEDGAME_ACTION_REGISTER_ROAD_OBJECT      (66)
+#define EXTENDEDGAME_ACTION_REGISTER_ROAD_SEGMENT     (67)
+#define EXTENDEDGAME_ACTION_CLEAR_CUSTOM_ROADS        (68)
+#define EXTENDEDGAME_ACTION_QUERY_TRAFFIC_REQ         (69)
+#define EXTENDEDGAME_ACTION_QUERY_TRAFFIC_RESP        (70)
+
+// Road Side Status
+#define ROAD_STATUS_INVALID_NODE                      (0)
+#define ROAD_STATUS_ON_INTERSECTION                   (1)
+#define ROAD_STATUS_NO_CONNECTING_NODE                (2)
+#define ROAD_STATUS_NO_NAVI_FOUND                     (3)
+#define ROAD_STATUS_ON_RIGHT_SIDE                     (4)
+#define ROAD_STATUS_ON_WRONG_SIDE                     (5)
+
+// Road Sides
+#define ROAD_SIDE_UNKNOWN                             (0)
+#define ROAD_SIDE_RIGHT                               (1)
+#define ROAD_SIDE_LEFT                                (-1)
+
+// Traffic Maneuver Constants
+#define TRAFFIC_MANEUVER_STRAIGHT                     (0)
+#define TRAFFIC_MANEUVER_RIGHT_TURN                   (1)
+#define TRAFFIC_MANEUVER_LEFT_TURN                    (2)
+#define TRAFFIC_MANEUVER_UTURN                        (3)
+
+// GPS Navigation Flags
+#define GPS_FLAG_RADAR_LINE                           (1)
+#define GPS_FLAG_WORLD_MARKER                         (2)
+#define GPS_FLAG_AUTO_REROUTE                         (4)
+#define GPS_FLAG_ALL                                  (7)
+
+// GPS Event Types
+#define GPS_EVENT_DESTINATION_REACHED                 (1)
+#define GPS_EVENT_REROUTED                            (2)
+#define GPS_EVENT_PATH_NOT_FOUND                      (3)
+
 #define MAX_WATER_ZONES                               (128)
 #define INVALID_WATER_ZONE                            (0xFFFF)
 
@@ -405,7 +449,7 @@ static stock _SendPlayerFireProofState(recipient, targetid)
 
 static stock _SyncExtGameActorState(targetid, recipient)
 {
-    if (!IsPlayerConnected(targetid) !IsPlayerConnected(recipient))
+    if (!IsPlayerConnected(targetid) || !IsPlayerConnected(recipient))
         return 0;
 
     if (EXTGAME::PlayerCJActive[targetid] || GetPlayerSkin(targetid) == 0)
@@ -2936,6 +2980,46 @@ public OnIncomingPacket(playerid, packetid, BitStream:bs) {
                 CallLocalFunction("OnPlayerEnterPauseSubmenu", "iii", playerid, fromPage, toPage);
             }
             return 0; // Handled, discard packet
+        } else if (actionid == EXTENDEDGAME_ACTION_ROAD_STATUS_EVENT) {
+            new status, closestNode;
+            new Float:distanceToRoad, Float:roadAngle, Float:vehicleAngle;
+            BS_ReadValue(bs,
+                PR_UINT8, status,
+                PR_INT32, closestNode,
+                PR_FLOAT, distanceToRoad,
+                PR_FLOAT, roadAngle,
+                PR_FLOAT, vehicleAngle
+            );
+            CallLocalFunction("OnPlayerRoadStatusChange", "iifff", playerid, status, closestNode, distanceToRoad, roadAngle, vehicleAngle);
+            return 0; // Handled, discard packet
+        } else if (actionid == EXTENDEDGAME_ACTION_GPS_EVENT) {
+            new eventType;
+            new Float:remainingDistance;
+            BS_ReadValue(bs,
+                PR_UINT8, eventType,
+                PR_FLOAT, remainingDistance
+            );
+            CallLocalFunction("OnPlayerGPSEvent", "iif", playerid, eventType, remainingDistance);
+            return 0; // Handled, discard packet
+        } else if (actionid == EXTENDEDGAME_ACTION_QUERY_TRAFFIC_RESP) {
+            new status, side, laneIndex, totalLanes;
+            new Float:lateralDeviation, Float:targetX, Float:targetY, Float:targetZ, Float:inclineDeg;
+            new isCustomRoad, customObjectId;
+            BS_ReadValue(bs,
+                PR_UINT8, status,
+                PR_INT8, side,
+                PR_UINT8, laneIndex,
+                PR_UINT8, totalLanes,
+                PR_FLOAT, lateralDeviation,
+                PR_FLOAT, targetX,
+                PR_FLOAT, targetY,
+                PR_FLOAT, targetZ,
+                PR_FLOAT, inclineDeg,
+                PR_UINT8, isCustomRoad,
+                PR_UINT32, customObjectId
+            );
+            CallLocalFunction("OnPlayerTrafficQuery", "iiiifffffii", playerid, status, side, laneIndex, totalLanes, lateralDeviation, targetX, targetY, targetZ, inclineDeg, isCustomRoad, customObjectId);
+            return 0; // Handled, discard packet
         }
     }
     #if defined EXTG_OnIncomingPacket
@@ -3218,3 +3302,140 @@ stock EXTG_PlayerTextDrawShow(playerid, PlayerText:text) {
     #define _ALS_PlayerTextDrawShow
 #endif
 #define PlayerTextDrawShow EXTG_PlayerTextDrawShow
+
+// ==============================================================================
+// ExtendedGame Traffic Roads Tracing & GPS Navigation API
+// ==============================================================================
+
+forward OnPlayerRoadStatusChange(playerid, status, closestNode, Float:distanceToRoad, Float:roadAngle, Float:vehicleAngle);
+forward OnPlayerGPSEvent(playerid, eventType, Float:remainingDistance);
+
+stock EXTGAME::SetGPSDestination(playerid, Float:x, Float:y, Float:z, flags = GPS_FLAG_ALL) {
+    if (!EXTGAME::PlayerHasPlugin[playerid]) return 0;
+    new BitStream:bs = BS_New();
+    BS_WriteValue(bs,
+        PR_UINT8, EXTENDEDGAME_PACKET_ID,
+        PR_UINT16, EXTENDEDGAME_TARGET_LOCAL_PLAYER,
+        PR_UINT8, EXTENDEDGAME_ACTION_GPS_SET_DESTINATION,
+        PR_FLOAT, x,
+        PR_FLOAT, y,
+        PR_FLOAT, z,
+        PR_UINT8, flags
+    );
+    PR_SendPacket(bs, playerid, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    BS_Delete(bs);
+    return 1;
+}
+
+stock EXTGAME::CancelGPS(playerid) {
+    if (!EXTGAME::PlayerHasPlugin[playerid]) return 0;
+    new BitStream:bs = BS_New();
+    BS_WriteValue(bs,
+        PR_UINT8, EXTENDEDGAME_PACKET_ID,
+        PR_UINT16, EXTENDEDGAME_TARGET_LOCAL_PLAYER,
+        PR_UINT8, EXTENDEDGAME_ACTION_GPS_CANCEL
+    );
+    PR_SendPacket(bs, playerid, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    BS_Delete(bs);
+    return 1;
+}
+
+stock EXTGAME::ToggleRoadSideCheck(playerid, bool:enable, bool:autoWarn = true, warnIntervalMs = 3000) {
+    if (!EXTGAME::PlayerHasPlugin[playerid]) return 0;
+    new BitStream:bs = BS_New();
+    BS_WriteValue(bs,
+        PR_UINT8, EXTENDEDGAME_PACKET_ID,
+        PR_UINT16, EXTENDEDGAME_TARGET_LOCAL_PLAYER,
+        PR_UINT8, EXTENDEDGAME_ACTION_SET_ROAD_CHECK,
+        PR_UINT8, (enable ? 1 : 0),
+        PR_UINT8, (autoWarn ? 1 : 0),
+        PR_UINT32, warnIntervalMs
+    );
+    PR_SendPacket(bs, playerid, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    BS_Delete(bs);
+    return 1;
+}
+
+forward OnPlayerTrafficQuery(playerid, status, side, laneIndex, totalLanes, Float:lateralDeviation, Float:targetX, Float:targetY, Float:targetZ, Float:inclineDeg, bool:isCustomRoad, customObjectId);
+
+stock EXTGAME::RegisterCustomRoadObject(playerid, objectid, modelid, Float:x, Float:y, Float:z, Float:rx, Float:ry, Float:rz, leftLanes = 1, rightLanes = 1, Float:width = 8.0) {
+    new BitStream:bs = BS_New();
+    BS_WriteValue(bs,
+        PR_UINT8, EXTENDEDGAME_PACKET_ID,
+        PR_UINT16, EXTENDEDGAME_TARGET_LOCAL_PLAYER,
+        PR_UINT8, EXTENDEDGAME_ACTION_REGISTER_ROAD_OBJECT,
+        PR_UINT32, objectid,
+        PR_UINT16, modelid,
+        PR_FLOAT, x,
+        PR_FLOAT, y,
+        PR_FLOAT, z,
+        PR_FLOAT, rx,
+        PR_FLOAT, ry,
+        PR_FLOAT, rz,
+        PR_UINT8, leftLanes,
+        PR_UINT8, rightLanes,
+        PR_FLOAT, width
+    );
+    if (playerid == -1) {
+        PR_SendPacket(bs, -1, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    } else if (EXTGAME::PlayerHasPlugin[playerid]) {
+        PR_SendPacket(bs, playerid, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    }
+    BS_Delete(bs);
+    return 1;
+}
+
+stock EXTGAME::RegisterCustomRoadSegment(playerid, Float:startX, Float:startY, Float:startZ, Float:endX, Float:endY, Float:endZ, leftLanes = 1, rightLanes = 1, Float:laneWidth = 4.0) {
+    new BitStream:bs = BS_New();
+    BS_WriteValue(bs,
+        PR_UINT8, EXTENDEDGAME_PACKET_ID,
+        PR_UINT16, EXTENDEDGAME_TARGET_LOCAL_PLAYER,
+        PR_UINT8, EXTENDEDGAME_ACTION_REGISTER_ROAD_SEGMENT,
+        PR_FLOAT, startX,
+        PR_FLOAT, startY,
+        PR_FLOAT, startZ,
+        PR_FLOAT, endX,
+        PR_FLOAT, endY,
+        PR_FLOAT, endZ,
+        PR_UINT8, leftLanes,
+        PR_UINT8, rightLanes,
+        PR_FLOAT, laneWidth
+    );
+    if (playerid == -1) {
+        PR_SendPacket(bs, -1, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    } else if (EXTGAME::PlayerHasPlugin[playerid]) {
+        PR_SendPacket(bs, playerid, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    }
+    BS_Delete(bs);
+    return 1;
+}
+
+stock EXTGAME::ClearCustomRoads(playerid = -1) {
+    new BitStream:bs = BS_New();
+    BS_WriteValue(bs,
+        PR_UINT8, EXTENDEDGAME_PACKET_ID,
+        PR_UINT16, EXTENDEDGAME_TARGET_LOCAL_PLAYER,
+        PR_UINT8, EXTENDEDGAME_ACTION_CLEAR_CUSTOM_ROADS
+    );
+    if (playerid == -1) {
+        PR_SendPacket(bs, -1, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    } else if (EXTGAME::PlayerHasPlugin[playerid]) {
+        PR_SendPacket(bs, playerid, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    }
+    BS_Delete(bs);
+    return 1;
+}
+
+stock EXTGAME::RequestTrafficQuery(playerid, Float:lookahead = 12.0) {
+    if (!EXTGAME::PlayerHasPlugin[playerid]) return 0;
+    new BitStream:bs = BS_New();
+    BS_WriteValue(bs,
+        PR_UINT8, EXTENDEDGAME_PACKET_ID,
+        PR_UINT16, EXTENDEDGAME_TARGET_LOCAL_PLAYER,
+        PR_UINT8, EXTENDEDGAME_ACTION_QUERY_TRAFFIC_REQ,
+        PR_FLOAT, lookahead
+    );
+    PR_SendPacket(bs, playerid, PR_HIGH_PRIORITY, PR_RELIABLE_ORDERED);
+    BS_Delete(bs);
+    return 1;
+}

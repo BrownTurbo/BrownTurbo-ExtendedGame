@@ -2,12 +2,15 @@
 #include "cj_manager.h"
 #include "defs.h"
 #include "game_extensions.h"
+#include "gps_manager.h"
+#include "roads_manager.h"
 #include "textdraw_rotation.h"
 #include "utils.h"
 #include "water_zones.h"
 
 #include <MinHook.h>
 #include <RakHook/rakhook.hpp>
+#include <Events.h>
 
 #include <chrono>
 #include <format>
@@ -29,8 +32,7 @@ static void hooked_game_loop()
 void ExtendedGamePlugin::Init(HMODULE hModule)
 {
 	m_hModule = hModule;
-	ClientLog(LogLevel::Info, std::format("BrownTurbo-ExtendedGame v{}.{}.{}.{}-{} DLL_PROCESS_ATTACH",
-		PLUGIN_VERSION_MAJOR, PLUGIN_VERSION_MINOR, PLUGIN_VERSION_PATCH, PLUGIN_VERSION_BUILD, PLUGIN_PHASE));
+	ClientLog(LogLevel::Info, std::format("BrownTurbo-ExtendedGame v{}.{}.{}.{}-{} DLL_PROCESS_ATTACH", PLUGIN_VERSION_MAJOR, PLUGIN_VERSION_MINOR, PLUGIN_VERSION_PATCH, PLUGIN_VERSION_BUILD, PLUGIN_PHASE));
 
 	// 1. Immediately install Model 0 hook and gameplay/environment hooks in GTA:SA
 	if (!m_bModel0HookInstalled) {
@@ -38,8 +40,13 @@ void ExtendedGamePlugin::Init(HMODULE hModule)
 		GameExtensions::Initialize();
 		TextDrawRotation::Initialize();
 		WaterZones::Initialize();
+		RoadsManager::Instance().Initialize();
+		GPSManager::Instance().Initialize();
+		plugin::Events::drawRadarOverlayEvent += []() {
+			GPSManager::Instance().RenderRadarRoute();
+		};
 		m_bModel0HookInstalled = true;
-		ClientLog(LogLevel::Info, "Model CJ, gameplay extensions, textdraw rotation, and water zones hooks initialized");
+		ClientLog(LogLevel::Info, "Model CJ, gameplay extensions, textdraw rotation, water zones, roads and GPS hooks initialized");
 	}
 
 	// 2. Hook CGame::Process (0x53BEE0) via MinHook so OnGameProcess executes every frame
@@ -106,6 +113,8 @@ void ExtendedGamePlugin::OnGameProcess()
 	GameExtensions::Process();
 	TextDrawRotation::Process();
 	WaterZones::Process();
+	RoadsManager::Instance().Process();
+	GPSManager::Instance().Process();
 
 	// If RakHook is initialized, process periodic sync & peds
 	if (m_bRakHookReady) {
@@ -130,6 +139,8 @@ void ExtendedGamePlugin::Shutdown()
 	}
 
 	if (m_bModel0HookInstalled) {
+		GPSManager::Instance().Shutdown();
+		RoadsManager::Instance().Shutdown();
 		WaterZones::Shutdown();
 		TextDrawRotation::Shutdown();
 		GameExtensions::Shutdown();

@@ -2,12 +2,16 @@
 #include "cj_manager.h"
 #include "defs.h"
 #include "game_extensions.h"
+#include "gps_manager.h"
+#include "roads_manager.h"
 #include "textdraw_rotation.h"
 #include "utils.h"
 #include "water_zones.h"
 
 #include <game_sa/CKeyGen.h>
 #include <game_sa/CPed.h>
+#include <CVehicle.h>
+#include <common.h>
 
 #include <format>
 #include <string>
@@ -689,6 +693,102 @@ bool OnReceivePacket(Packet* p)
 		break;
 	}
 
+	case EXTENDEDGAME_ACTION_GPS_SET_DESTINATION: {
+		float x = 0.0f, y = 0.0f, z = 0.0f;
+		uint8_t flags = GPS_NAV_FLAG_ALL;
+		if (bs.Read(x) && bs.Read(y) && bs.Read(z)) {
+			bs.Read(flags);
+			GPSManager::Instance().SetDestination(CVector(x, y, z), flags);
+			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_GPS_SET_DESTINATION: target=({:.1f}, {:.1f}, {:.1f}), flags=0x{:02X}", x, y, z, flags));
+		}
+		break;
+	}
+
+	case EXTENDEDGAME_ACTION_GPS_CANCEL: {
+		GPSManager::Instance().CancelDestination();
+		ClientLog(LogLevel::Info, "EXTENDEDGAME_ACTION_GPS_CANCEL received");
+		break;
+	}
+
+	case EXTENDEDGAME_ACTION_SET_ROAD_CHECK: {
+		uint8_t enable = 1;
+		uint8_t autoWarn = 1;
+		uint32_t warnInterval = 3000;
+		if (bs.Read(enable)) {
+			bs.Read(autoWarn);
+			bs.Read(warnInterval);
+			RoadsManager::Instance().Configure(enable != 0, autoWarn != 0, warnInterval);
+			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_SET_ROAD_CHECK: enable={}, autoWarn={}, interval={}ms", enable, autoWarn, warnInterval));
+		}
+		break;
+	}
+
+	case EXTENDEDGAME_ACTION_REGISTER_ROAD_OBJECT: {
+		uint32_t objectId = 0;
+		uint16_t modelId = 0;
+		float x = 0.0f, y = 0.0f, z = 0.0f;
+		float rx = 0.0f, ry = 0.0f, rz = 0.0f;
+		uint8_t leftLanes = 1, rightLanes = 1;
+		float width = 8.0f;
+		if (bs.Read(objectId) && bs.Read(modelId) &&
+			bs.Read(x) && bs.Read(y) && bs.Read(z) &&
+			bs.Read(rx) && bs.Read(ry) && bs.Read(rz)) {
+			bs.Read(leftLanes);
+			bs.Read(rightLanes);
+			bs.Read(width);
+			RoadsManager::Instance().RegisterCustomRoadObject(
+				objectId, modelId, CVector(x, y, z), CVector(rx, ry, rz), leftLanes, rightLanes, width);
+			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_REGISTER_ROAD_OBJECT: objId={}, modelId={}, pos=({:.1f}, {:.1f}, {:.1f})",
+				objectId, modelId, x, y, z));
+		}
+		break;
+	}
+
+	case EXTENDEDGAME_ACTION_REGISTER_ROAD_SEGMENT: {
+		float sx = 0.0f, sy = 0.0f, sz = 0.0f;
+		float ex = 0.0f, ey = 0.0f, ez = 0.0f;
+		uint8_t leftLanes = 1, rightLanes = 1;
+		float laneWidth = 4.0f;
+		if (bs.Read(sx) && bs.Read(sy) && bs.Read(sz) &&
+			bs.Read(ex) && bs.Read(ey) && bs.Read(ez)) {
+			bs.Read(leftLanes);
+			bs.Read(rightLanes);
+			bs.Read(laneWidth);
+			RoadsManager::Instance().RegisterCustomRoadSegment(
+				CVector(sx, sy, sz), CVector(ex, ey, ez), leftLanes, rightLanes, laneWidth);
+			ClientLog(LogLevel::Info, std::format("EXTENDEDGAME_ACTION_REGISTER_ROAD_SEGMENT: start=({:.1f}, {:.1f}, {:.1f}), end=({:.1f}, {:.1f}, {:.1f})",
+				sx, sy, sz, ex, ey, ez));
+		}
+		break;
+	}
+
+	case EXTENDEDGAME_ACTION_CLEAR_CUSTOM_ROADS: {
+		RoadsManager::Instance().ClearCustomRoads();
+		ClientLog(LogLevel::Info, "EXTENDEDGAME_ACTION_CLEAR_CUSTOM_ROADS received");
+		break;
+	}
+
+	case EXTENDEDGAME_ACTION_QUERY_TRAFFIC_REQ: {
+		float lookahead = 12.0f;
+		bs.Read(lookahead);
+
+		CPed* pPlayer = FindPlayerPed();
+		if (pPlayer) {
+			CVehicle* pVeh = FindPlayerVehicle(-1, false);
+			TrafficQueryResult tRes;
+			if (pVeh) {
+				tRes = RoadsManager::Instance().QueryVehicleTraffic(pVeh, lookahead);
+			} else {
+				tRes = RoadsManager::Instance().QueryTraffic(pPlayer->GetPosition(), pPlayer->GetHeading() * (180.0f / 3.14159265f), lookahead);
+			}
+
+			SendTrafficQueryResponse(tRes.status, tRes.lane.side, tRes.lane.laneIndex, tRes.lane.totalLanesOnSide,
+				tRes.lane.currentLateralDeviation, tRes.steering.targetPos.x, tRes.steering.targetPos.y, tRes.steering.targetPos.z,
+				tRes.raycast.inclineDeg, tRes.isCustomRoad, tRes.customRoadObjectId);
+		}
+		break;
+	}
+
 	default:
 		break;
 	}
@@ -820,6 +920,81 @@ bool SendPauseMenuEvent(uint8_t eventType, uint8_t fromPage, uint8_t toPage)
 	bool bSuccess = rakhook::send(&bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0);
 	ClientLog(LogLevel::Debug, std::format("SendPauseMenuEvent: type={}, from={}, to={}, success={}",
 		eventType, fromPage, toPage, bSuccess));
+	return bSuccess;
+}
+
+bool SendRoadStatusEvent(uint8_t status, int32_t closestNodeId, float distanceToRoad, float roadAngle, float vehicleAngle)
+{
+	if (!g_bHooked || !rakhook::initialized || !rakhook::orig || !rakhook::orig->IsConnected()) return false;
+
+	RakNet::BitStream bs;
+	uint8_t packetId = EXTENDEDGAME_PACKET_ID;
+	uint16_t targetId = CJ_LOCAL_PLAYER_ID;
+	uint8_t actionId = EXTENDEDGAME_ACTION_ROAD_STATUS_EVENT;
+
+	bs.Write(packetId);
+	bs.Write(targetId);
+	bs.Write(actionId);
+	bs.Write(status);
+	bs.Write(closestNodeId);
+	bs.Write(distanceToRoad);
+	bs.Write(roadAngle);
+	bs.Write(vehicleAngle);
+
+	bool bSuccess = rakhook::send(&bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0);
+	ClientLog(LogLevel::Debug, std::format("SendRoadStatusEvent: status={}, closestNode={}, dist={:.1f}, roadAng={:.1f}, vehAng={:.1f}, success={}",
+		status, closestNodeId, distanceToRoad, roadAngle, vehicleAngle, bSuccess));
+	return bSuccess;
+}
+
+bool SendGPSEvent(uint8_t eventType, float remainingDistance)
+{
+	if (!g_bHooked || !rakhook::initialized || !rakhook::orig || !rakhook::orig->IsConnected()) return false;
+
+	RakNet::BitStream bs;
+	uint8_t packetId = EXTENDEDGAME_PACKET_ID;
+	uint16_t targetId = CJ_LOCAL_PLAYER_ID;
+	uint8_t actionId = EXTENDEDGAME_ACTION_GPS_EVENT;
+
+	bs.Write(packetId);
+	bs.Write(targetId);
+	bs.Write(actionId);
+	bs.Write(eventType);
+	bs.Write(remainingDistance);
+
+	bool bSuccess = rakhook::send(&bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0);
+	ClientLog(LogLevel::Debug, std::format("SendGPSEvent: type={}, remainingDist={:.1f}, success={}",
+		eventType, remainingDistance, bSuccess));
+	return bSuccess;
+}
+
+bool SendTrafficQueryResponse(uint8_t status, int8_t side, uint8_t laneIndex, uint8_t totalLanes,
+	float lateralDeviation, float targetX, float targetY, float targetZ, float inclineDeg,
+	bool isCustomRoad, uint32_t customObjectId)
+{
+	if (!g_bHooked || !rakhook::initialized || !rakhook::orig || !rakhook::orig->IsConnected()) return false;
+
+	RakNet::BitStream bs;
+	uint8_t packetId = EXTENDEDGAME_PACKET_ID;
+	uint16_t targetId = CJ_LOCAL_PLAYER_ID;
+	uint8_t actionId = EXTENDEDGAME_ACTION_QUERY_TRAFFIC_RESP;
+
+	bs.Write(packetId);
+	bs.Write(targetId);
+	bs.Write(actionId);
+	bs.Write(status);
+	bs.Write(side);
+	bs.Write(laneIndex);
+	bs.Write(totalLanes);
+	bs.Write(lateralDeviation);
+	bs.Write(targetX);
+	bs.Write(targetY);
+	bs.Write(targetZ);
+	bs.Write(inclineDeg);
+	bs.Write(static_cast<uint8_t>(isCustomRoad ? 1 : 0));
+	bs.Write(customObjectId);
+
+	bool bSuccess = rakhook::send(&bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0);
 	return bSuccess;
 }
 

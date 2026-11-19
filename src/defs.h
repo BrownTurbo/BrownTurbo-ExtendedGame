@@ -109,7 +109,50 @@ enum eExtendedGameAction : uint8_t {
 
 	// Action 60: Vehicle Speed Blur Motion Toggle
 	EXTENDEDGAME_ACTION_TOGGLE_VEHICLE_BLUR       = 60, // uint8_t enable (0 or 1), uint8_t intensity (default 36)
+
+	// Actions 61..65: Traffic Roads Tracing & GPS Navigation
+	EXTENDEDGAME_ACTION_GPS_SET_DESTINATION       = 61, // float x, float y, float z, uint8_t flags
+	EXTENDEDGAME_ACTION_GPS_CANCEL                = 62, // no payload
+	EXTENDEDGAME_ACTION_SET_ROAD_CHECK            = 63, // uint8_t enable (0 or 1), uint8_t autoWarn (0 or 1), uint32_t warnIntervalMs
+	EXTENDEDGAME_ACTION_ROAD_STATUS_EVENT         = 64, // (Client -> Server) uint8_t status, int32_t closestNodeId, float distanceToRoad, float roadAngle, float vehicleAngle
+	EXTENDEDGAME_ACTION_GPS_EVENT                 = 65, // (Client -> Server) uint8_t eventType, float remainingDistance
+
+	// Actions 66..70: Custom Roads & Traffic Tracing System
+	EXTENDEDGAME_ACTION_REGISTER_ROAD_OBJECT      = 66, // uint32_t objectId, uint16_t modelId, float x, float y, float z, float rx, float ry, float rz, uint8_t leftLanes, uint8_t rightLanes, float width
+	EXTENDEDGAME_ACTION_REGISTER_ROAD_SEGMENT     = 67, // float sx, float sy, float sz, float ex, float ey, float ez, uint8_t leftLanes, uint8_t rightLanes, float laneWidth
+	EXTENDEDGAME_ACTION_CLEAR_CUSTOM_ROADS        = 68, // no payload
+	EXTENDEDGAME_ACTION_QUERY_TRAFFIC_REQ         = 69, // float lookaheadDist
+	EXTENDEDGAME_ACTION_QUERY_TRAFFIC_RESP        = 70, // (Client -> Server) detailed traffic query telemetry
 };
+
+// Road Side Status
+constexpr uint8_t ROAD_STATUS_INVALID_NODE       = 0;
+constexpr uint8_t ROAD_STATUS_ON_INTERSECTION    = 1;
+constexpr uint8_t ROAD_STATUS_NO_CONNECTING_NODE = 2;
+constexpr uint8_t ROAD_STATUS_NO_NAVI_FOUND      = 3;
+constexpr uint8_t ROAD_STATUS_ON_RIGHT_SIDE      = 4;
+constexpr uint8_t ROAD_STATUS_ON_WRONG_SIDE      = 5;
+
+// Road Sides
+constexpr int8_t ROAD_SIDE_UNKNOWN               = 0;
+constexpr int8_t ROAD_SIDE_RIGHT                 = 1;
+constexpr int8_t ROAD_SIDE_LEFT                  = -1;
+
+// Traffic Maneuver Constants
+constexpr uint8_t TRAFFIC_MANEUVER_STRAIGHT      = 0;
+constexpr uint8_t TRAFFIC_MANEUVER_RIGHT_TURN    = 1;
+constexpr uint8_t TRAFFIC_MANEUVER_LEFT_TURN     = 2;
+constexpr uint8_t TRAFFIC_MANEUVER_UTURN         = 3;
+
+// GPS Navigation Flags
+constexpr uint8_t GPS_FLAG_RADAR_LINE            = 1;
+constexpr uint8_t GPS_FLAG_WORLD_MARKER          = 2;
+constexpr uint8_t GPS_FLAG_AUTO_REROUTE          = 4;
+
+// GPS Event Types
+constexpr uint8_t GPS_EVENT_DESTINATION_REACHED  = 1;
+constexpr uint8_t GPS_EVENT_REROUTED            = 2;
+constexpr uint8_t GPS_EVENT_PATH_NOT_FOUND      = 3;
 
 // HUD Components Bitmask
 constexpr uint32_t HUD_COMPONENT_AMMO         = 1;
