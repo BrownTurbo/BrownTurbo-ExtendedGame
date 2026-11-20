@@ -8,9 +8,9 @@ cmake_policy(SET CMP0091 NEW)
 set(PLUGIN_NAME "brownturbo-extendedgame")
 set(PLUGIN_VERSION_MAJOR 0)
 set(PLUGIN_VERSION_MINOR 0)
-set(PLUGIN_VERSION_PATCH 1)
-set(PLUGIN_VERSION_BUILD 8)
-set(PLUGIN_PHASE "beta")
+set(PLUGIN_VERSION_PATCH 2)
+set(PLUGIN_VERSION_BUILD 2)
+set(PLUGIN_PHASE "alpha")
 #==============================================================================#
 project(${PLUGIN_NAME} LANGUAGES C CXX VERSION ${PLUGIN_VERSION_MAJOR}.${PLUGIN_VERSION_MINOR}.${PLUGIN_VERSION_BUILD})
 
