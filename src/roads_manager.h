@@ -21,6 +21,8 @@ struct RoadNavi {
 	int32_t to = -1;
 	uint8_t leftLanes = 0;
 	uint8_t rightLanes = 0;
+	float dirX = 0.0f;
+	float dirY = 0.0f;
 };
 
 struct RoadNode {

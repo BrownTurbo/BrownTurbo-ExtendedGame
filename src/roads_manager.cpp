@@ -382,6 +382,8 @@ bool RoadsManager::LoadFromNodesDat(const std::string& customDir)
 			rNavi.to = -1;
 			rNavi.leftLanes = rawNavi.flags1 & 0x07;
 			rNavi.rightLanes = (rawNavi.flags1 >> 3) & 0x07;
+			rNavi.dirX = static_cast<float>(rawNavi.dirX) / 100.0f;
+			rNavi.dirY = static_cast<float>(rawNavi.dirY) / 100.0f;
 
 			areaNaviToGlobal[area][j] = static_cast<int32_t>(m_navis.size());
 			m_navis.push_back(rNavi);
@@ -519,6 +521,8 @@ bool RoadsManager::LoadFromEnginePaths()
 			rNavi.to = -1;
 			rNavi.leftLanes = pLink->m_nNumLeftLanes;
 			rNavi.rightLanes = pLink->m_nNumRightLanes;
+			rNavi.dirX = static_cast<float>(pLink->m_nDirX) / 100.0f;
+			rNavi.dirY = static_cast<float>(pLink->m_nDirY) / 100.0f;
 			m_navis.push_back(rNavi);
 		}
 	}
@@ -1044,17 +1048,11 @@ TrafficQueryResult RoadsManager::QueryTraffic(const CVector& pos, float headingD
 
 	// 3. Check Native Road Nodes
 	float nativeDist = 9999.0f;
-	int32_t nativeNodeId = FindClosestNode(pos, 120.0f, &nativeDist);
+	int32_t nativeNodeId = FindClosestNode(pos, 60.0f, &nativeDist);
 
 	// Prefer custom road if within reach and closer or on top of it
 	if (customIdx != -1 && (customDist <= nativeDist || res.raycast.isCustomRoadObject)) {
 		const auto& seg = m_customSegments[customIdx];
-		res.isCustomRoad = true;
-		res.customRoadObjectId = seg.objectId;
-		res.segmentStart = seg.startPos;
-		res.segmentEnd = seg.endPos;
-		res.segmentLength = seg.length;
-
 		float segLen = std::max(0.01f, seg.length);
 		CVector fwd = seg.forward;
 		CVector rt = seg.right;
@@ -1062,90 +1060,163 @@ TrafficQueryResult RoadsManager::QueryTraffic(const CVector& pos, float headingD
 		float t = ((pos.x - seg.startPos.x) * fwd.x +
 		           (pos.y - seg.startPos.y) * fwd.y +
 		           (pos.z - seg.startPos.z) * fwd.z) / segLen;
-		res.longitudinalProgress = std::clamp(t, 0.0f, 1.0f);
+		float clampedT = std::clamp(t, 0.0f, 1.0f);
 
-		CVector centerPoint = seg.startPos + (fwd * (res.longitudinalProgress * segLen));
+		CVector centerPoint = seg.startPos + (fwd * (clampedT * segLen));
 		CVector toPos = pos - centerPoint;
 		float lateralOffset = toPos.x * rt.x + toPos.y * rt.y + toPos.z * rt.z;
 
-		float roadHeading = std::atan2(fwd.y, fwd.x) * BT_RAD_TO_DEG - 90.0f;
-		res.roadHeading = NormalizeAngle(roadHeading);
+		float laneW = (seg.laneWidth > 0.5f) ? seg.laneWidth : 3.75f;
+		bool isOneWay = seg.isOneWay || (seg.leftLanes == 0) || (seg.rightLanes == 0);
+		uint8_t oneWayLanes = (seg.leftLanes == 0) ? std::max<uint8_t>(1, seg.rightLanes) : (seg.rightLanes == 0 ? std::max<uint8_t>(1, seg.leftLanes) : (seg.leftLanes + seg.rightLanes));
 
-		float vehAngle = NormalizeAngle(headingDeg);
-		float angleDiff = NormalizeAngleDiff(res.roadHeading - vehAngle);
+		float maxRight = isOneWay ? ((static_cast<float>(oneWayLanes) * 0.5f) * laneW + 2.5f) : ((seg.rightLanes > 0) ? (seg.rightLanes * laneW + 2.5f) : 2.0f);
+		float maxLeft  = isOneWay ? ((static_cast<float>(oneWayLanes) * 0.5f) * laneW + 2.5f) : ((seg.leftLanes > 0)  ? (seg.leftLanes * laneW + 2.5f)  : 2.0f);
+		float dz = std::abs(pos.z - centerPoint.z);
 
-		res.lane.laneWidth = seg.laneWidth;
-		if (lateralOffset >= 0.0f) {
-			// Right side
-			res.lane.side = ROAD_SIDE_RIGHT;
-			res.lane.totalLanesOnSide = seg.rightLanes;
-			uint8_t lIdx = static_cast<uint8_t>(lateralOffset / std::max(0.5f, seg.laneWidth));
-			res.lane.laneIndex = std::min<uint8_t>(lIdx, std::max<uint8_t>(1, seg.rightLanes) - 1);
+		bool isOffRoadCustom = (dz > 3.2f ||
+		                        (lateralOffset >= 0.0f && lateralOffset > maxRight) ||
+		                        (lateralOffset < 0.0f && (-lateralOffset) > maxLeft) ||
+		                        t < -0.25f || t > 1.25f);
 
-			res.lane.lateralOffsetFromCenter = (static_cast<float>(res.lane.laneIndex) + 0.5f) * seg.laneWidth;
-			res.lane.currentLateralDeviation = lateralOffset - res.lane.lateralOffsetFromCenter;
-			res.lane.laneCenterPos = centerPoint + (rt * res.lane.lateralOffsetFromCenter);
+		// If outside custom road bounds and not raycast-confirmed, fall through to native roads if available
+		if (isOffRoadCustom && !res.raycast.isCustomRoadObject && nativeNodeId != -1) {
+			// Fall through to native road analysis below
+		} else if (isOffRoadCustom) {
+			res.isCustomRoad = true;
+			res.customRoadObjectId = seg.objectId;
+			res.segmentStart = seg.startPos;
+			res.segmentEnd = seg.endPos;
+			res.segmentLength = seg.length;
+			res.longitudinalProgress = clampedT;
+			res.roadHeading = NormalizeAngle(std::atan2(fwd.y, fwd.x) * BT_RAD_TO_DEG - 90.0f);
+
+			res.status = ROAD_STATUS_OFF_ROAD;
+			res.lane.side = ROAD_SIDE_UNKNOWN;
+			res.lane.laneIndex = 0;
+			res.lane.totalLanesOnSide = 0;
+			res.lane.laneWidth = laneW;
+			res.lane.lateralOffsetFromCenter = 0.0f;
+			res.lane.currentLateralDeviation = lateralOffset;
+			res.lane.laneCenterPos = centerPoint;
 			res.lane.laneForwardTangent = fwd;
 			res.lane.legalHeading = res.roadHeading;
-			res.lane.isAlignedWithTraffic = (std::abs(angleDiff) <= 60.0f);
-			res.status = res.lane.isAlignedWithTraffic ? ROAD_STATUS_ON_RIGHT_SIDE : ROAD_STATUS_ON_WRONG_SIDE;
+			res.lane.isAlignedWithTraffic = false;
+
+			res.steering.targetPos = centerPoint;
+			res.steering.tangent = fwd;
+			res.steering.targetHeading = res.roadHeading;
+			return res;
 		} else {
-			// Left side
-			res.lane.side = ROAD_SIDE_LEFT;
-			res.lane.totalLanesOnSide = seg.leftLanes;
-			float leftPos = -lateralOffset;
-			uint8_t lIdx = static_cast<uint8_t>(leftPos / std::max(0.5f, seg.laneWidth));
-			res.lane.laneIndex = std::min<uint8_t>(lIdx, std::max<uint8_t>(1, seg.leftLanes) - 1);
+			// On custom road
+			res.isCustomRoad = true;
+			res.customRoadObjectId = seg.objectId;
+			res.segmentStart = seg.startPos;
+			res.segmentEnd = seg.endPos;
+			res.segmentLength = seg.length;
+			res.longitudinalProgress = clampedT;
 
-			res.lane.lateralOffsetFromCenter = -(static_cast<float>(res.lane.laneIndex) + 0.5f) * seg.laneWidth;
-			res.lane.currentLateralDeviation = leftPos - ((static_cast<float>(res.lane.laneIndex) + 0.5f) * seg.laneWidth);
-			res.lane.laneCenterPos = centerPoint + (rt * res.lane.lateralOffsetFromCenter);
-			res.lane.laneForwardTangent = -fwd;
-			res.lane.legalHeading = NormalizeAngle(res.roadHeading + 180.0f);
-			float leftAngleDiff = NormalizeAngleDiff(res.lane.legalHeading - vehAngle);
-			res.lane.isAlignedWithTraffic = (std::abs(leftAngleDiff) <= 60.0f);
-			res.status = res.lane.isAlignedWithTraffic ? ROAD_STATUS_ON_RIGHT_SIDE : ROAD_STATUS_ON_WRONG_SIDE;
+			float roadHeading = std::atan2(fwd.y, fwd.x) * BT_RAD_TO_DEG - 90.0f;
+			res.roadHeading = NormalizeAngle(roadHeading);
+
+			float vehAngle = NormalizeAngle(headingDeg);
+			float angleDiff = NormalizeAngleDiff(res.roadHeading - vehAngle);
+
+			res.lane.laneWidth = seg.laneWidth;
+
+			if (isOneWay) {
+				// One-way custom road: all lanes travel forward
+				res.lane.side = (lateralOffset >= 0.0f) ? ROAD_SIDE_RIGHT : ROAD_SIDE_LEFT;
+				res.lane.totalLanesOnSide = oneWayLanes;
+
+				float roadWidth = static_cast<float>(oneWayLanes) * laneW;
+				float offsetFromLeft = std::clamp(lateralOffset + (roadWidth * 0.5f), 0.0f, roadWidth);
+				uint8_t lIdx = static_cast<uint8_t>(offsetFromLeft / std::max(0.5f, laneW));
+				res.lane.laneIndex = std::min<uint8_t>(lIdx, oneWayLanes - 1);
+
+				res.lane.lateralOffsetFromCenter = lateralOffset;
+				res.lane.currentLateralDeviation = 0.0f;
+				res.lane.laneCenterPos = centerPoint + (rt * lateralOffset);
+				res.lane.laneForwardTangent = fwd;
+				res.lane.legalHeading = res.roadHeading;
+				res.lane.isAlignedWithTraffic = (std::abs(angleDiff) <= 65.0f);
+				res.status = res.lane.isAlignedWithTraffic ? ROAD_STATUS_ON_RIGHT_SIDE : ROAD_STATUS_ON_WRONG_SIDE;
+			} else {
+				if (lateralOffset >= -0.8f) {
+					// Right side (forward traffic)
+					res.lane.side = ROAD_SIDE_RIGHT;
+					res.lane.totalLanesOnSide = seg.rightLanes;
+					float posOffset = std::max(0.0f, lateralOffset);
+					uint8_t lIdx = static_cast<uint8_t>(posOffset / std::max(0.5f, seg.laneWidth));
+					res.lane.laneIndex = std::min<uint8_t>(lIdx, std::max<uint8_t>(1, seg.rightLanes) - 1);
+
+					res.lane.lateralOffsetFromCenter = (static_cast<float>(res.lane.laneIndex) + 0.5f) * seg.laneWidth;
+					res.lane.currentLateralDeviation = lateralOffset - res.lane.lateralOffsetFromCenter;
+					res.lane.laneCenterPos = centerPoint + (rt * res.lane.lateralOffsetFromCenter);
+					res.lane.laneForwardTangent = fwd;
+					res.lane.legalHeading = res.roadHeading;
+					res.lane.isAlignedWithTraffic = (std::abs(angleDiff) <= 60.0f);
+					res.status = res.lane.isAlignedWithTraffic ? ROAD_STATUS_ON_RIGHT_SIDE : ROAD_STATUS_ON_WRONG_SIDE;
+				} else {
+					// Left side (opposing traffic)
+					res.lane.side = ROAD_SIDE_LEFT;
+					res.lane.totalLanesOnSide = seg.leftLanes;
+					float leftPos = -lateralOffset;
+					uint8_t lIdx = static_cast<uint8_t>(leftPos / std::max(0.5f, seg.laneWidth));
+					res.lane.laneIndex = std::min<uint8_t>(lIdx, std::max<uint8_t>(1, seg.leftLanes) - 1);
+
+					res.lane.lateralOffsetFromCenter = -(static_cast<float>(res.lane.laneIndex) + 0.5f) * seg.laneWidth;
+					res.lane.currentLateralDeviation = leftPos - ((static_cast<float>(res.lane.laneIndex) + 0.5f) * seg.laneWidth);
+					res.lane.laneCenterPos = centerPoint + (rt * res.lane.lateralOffsetFromCenter);
+					res.lane.laneForwardTangent = -fwd;
+					res.lane.legalHeading = NormalizeAngle(res.roadHeading + 180.0f);
+					float leftAngleDiff = NormalizeAngleDiff(res.lane.legalHeading - vehAngle);
+					res.lane.isAlignedWithTraffic = (std::abs(leftAngleDiff) <= 60.0f);
+					res.status = res.lane.isAlignedWithTraffic ? ROAD_STATUS_ON_RIGHT_SIDE : ROAD_STATUS_ON_WRONG_SIDE;
+				}
+			}
+
+			// Lookahead Steering Target
+			float targetT = (res.lane.side == ROAD_SIDE_RIGHT)
+				? (res.longitudinalProgress + (lookaheadDist / segLen))
+				: (res.longitudinalProgress - (lookaheadDist / segLen));
+
+			if (targetT >= 0.0f && targetT <= 1.0f) {
+				res.steering.targetPos = seg.startPos + (fwd * (targetT * segLen)) + (rt * res.lane.lateralOffsetFromCenter);
+				res.steering.tangent = res.lane.laneForwardTangent;
+				res.steering.targetHeading = res.lane.legalHeading;
+			} else if (targetT > 1.0f && seg.nextSegmentId != -1 && static_cast<size_t>(seg.nextSegmentId) < m_customSegments.size()) {
+				const auto& nextSeg = m_customSegments[seg.nextSegmentId];
+				float remainderDist = (targetT - 1.0f) * segLen;
+				float nextT = std::clamp(remainderDist / std::max(0.01f, nextSeg.length), 0.0f, 1.0f);
+				res.steering.targetPos = nextSeg.startPos + (nextSeg.forward * (nextT * nextSeg.length)) + (nextSeg.right * res.lane.lateralOffsetFromCenter);
+				res.steering.tangent = nextSeg.forward;
+				res.steering.targetHeading = NormalizeAngle(std::atan2(nextSeg.forward.y, nextSeg.forward.x) * BT_RAD_TO_DEG - 90.0f);
+			} else {
+				res.steering.targetPos = centerPoint + (res.lane.laneForwardTangent * lookaheadDist) + (rt * res.lane.lateralOffsetFromCenter);
+				res.steering.tangent = res.lane.laneForwardTangent;
+				res.steering.targetHeading = res.lane.legalHeading;
+			}
+
+			return res;
 		}
-
-		// Lookahead Steering Target
-		float targetT = (res.lane.side == ROAD_SIDE_RIGHT)
-			? (res.longitudinalProgress + (lookaheadDist / segLen))
-			: (res.longitudinalProgress - (lookaheadDist / segLen));
-
-		if (targetT >= 0.0f && targetT <= 1.0f) {
-			res.steering.targetPos = seg.startPos + (fwd * (targetT * segLen)) + (rt * res.lane.lateralOffsetFromCenter);
-			res.steering.tangent = res.lane.laneForwardTangent;
-			res.steering.targetHeading = res.lane.legalHeading;
-		} else if (targetT > 1.0f && seg.nextSegmentId != -1 && static_cast<size_t>(seg.nextSegmentId) < m_customSegments.size()) {
-			const auto& nextSeg = m_customSegments[seg.nextSegmentId];
-			float remainderDist = (targetT - 1.0f) * segLen;
-			float nextT = std::clamp(remainderDist / std::max(0.01f, nextSeg.length), 0.0f, 1.0f);
-			res.steering.targetPos = nextSeg.startPos + (nextSeg.forward * (nextT * nextSeg.length)) + (nextSeg.right * res.lane.lateralOffsetFromCenter);
-			res.steering.tangent = nextSeg.forward;
-			res.steering.targetHeading = NormalizeAngle(std::atan2(nextSeg.forward.y, nextSeg.forward.x) * BT_RAD_TO_DEG - 90.0f);
-		} else {
-			res.steering.targetPos = centerPoint + (res.lane.laneForwardTangent * lookaheadDist) + (rt * res.lane.lateralOffsetFromCenter);
-			res.steering.tangent = res.lane.laneForwardTangent;
-			res.steering.targetHeading = res.lane.legalHeading;
-		}
-
-		return res;
 	}
 
 	// Native Road Analysis
-	if (nativeNodeId == -1 || static_cast<size_t>(nativeNodeId) >= m_nodes.size()) {
+	if (m_nodes.empty()) {
 		res.status = ROAD_STATUS_INVALID_NODE;
+		return res;
+	}
+
+	if (nativeNodeId == -1 || nativeDist > 60.0f || static_cast<size_t>(nativeNodeId) >= m_nodes.size()) {
+		res.status = ROAD_STATUS_OFF_ROAD;
 		return res;
 	}
 
 	res.currentNodeId = nativeNodeId;
 	const auto& firstNode = m_nodes[nativeNodeId];
 
-	if (firstNode.linkCount > 2) {
-		res.status = ROAD_STATUS_ON_INTERSECTION;
-	}
-
-	// Find the connecting node closest to current position
+	// Find the connecting node whose segment line is closest to current position
 	int32_t bestConnectedNode = -1;
 	int32_t bestNaviId = -1;
 	float bestDistSq = 1e9f;
@@ -1154,10 +1225,21 @@ TrafficQueryResult RoadsManager::QueryTraffic(const CVector& pos, float headingD
 		int32_t targetId = firstNode.links[k].targetNodeId;
 		if (targetId != -1 && static_cast<size_t>(targetId) < m_nodes.size()) {
 			const auto& candidate = m_nodes[targetId];
-			float dx = candidate.pos.x - pos.x;
-			float dy = candidate.pos.y - pos.y;
-			float dz = candidate.pos.z - pos.z;
-			float d2 = dx * dx + dy * dy + dz * dz;
+			CVector segDiff = candidate.pos - firstNode.pos;
+			float lenSq = segDiff.x * segDiff.x + segDiff.y * segDiff.y + segDiff.z * segDiff.z;
+			float d2 = 0.0f;
+			if (lenSq > 0.01f) {
+				float segT = ((pos.x - firstNode.pos.x) * segDiff.x +
+				              (pos.y - firstNode.pos.y) * segDiff.y +
+				              (pos.z - firstNode.pos.z) * segDiff.z) / lenSq;
+				float clampedT = std::clamp(segT, 0.0f, 1.0f);
+				CVector proj = firstNode.pos + (segDiff * clampedT);
+				CVector dVec = pos - proj;
+				d2 = dVec.x * dVec.x + dVec.y * dVec.y + dVec.z * dVec.z;
+			} else {
+				CVector dVec = candidate.pos - pos;
+				d2 = dVec.x * dVec.x + dVec.y * dVec.y + dVec.z * dVec.z;
+			}
 
 			if (d2 < bestDistSq) {
 				bestDistSq = d2;
@@ -1182,83 +1264,186 @@ TrafficQueryResult RoadsManager::QueryTraffic(const CVector& pos, float headingD
 	float segLen = std::sqrt(diff.x * diff.x + diff.y * diff.y);
 	res.segmentLength = segLen;
 
-	if (segLen > 0.001f) {
-		CVector fwd = { diff.x / segLen, diff.y / segLen, diff.z / segLen };
-		CVector rt = { fwd.y, -fwd.x, 0.0f };
+	if (segLen <= 0.001f) {
+		res.status = ROAD_STATUS_INVALID_NODE;
+		return res;
+	}
 
-		float t = ((pos.x - firstNode.pos.x) * fwd.x +
-		           (pos.y - firstNode.pos.y) * fwd.y +
-		           (pos.z - firstNode.pos.z) * fwd.z) / segLen;
-		res.longitudinalProgress = std::clamp(t, 0.0f, 1.0f);
+	CVector fwd = { diff.x / segLen, diff.y / segLen, diff.z / segLen };
+	CVector rt = { fwd.y, -fwd.x, 0.0f };
 
-		CVector centerPoint = firstNode.pos + (fwd * (res.longitudinalProgress * segLen));
-		CVector toPos = pos - centerPoint;
-		float lateralOffset = toPos.x * rt.x + toPos.y * rt.y;
+	float t = ((pos.x - firstNode.pos.x) * fwd.x +
+	           (pos.y - firstNode.pos.y) * fwd.y +
+	           (pos.z - firstNode.pos.z) * fwd.z) / segLen;
+	res.longitudinalProgress = std::clamp(t, 0.0f, 1.0f);
 
-		float roadHeading = std::atan2(diff.y, diff.x) * BT_RAD_TO_DEG - 90.0f;
-		res.roadHeading = NormalizeAngle(roadHeading);
+	CVector centerPoint = firstNode.pos + (fwd * (res.longitudinalProgress * segLen));
+	CVector toPos = pos - centerPoint;
+	float lateralOffset = toPos.x * rt.x + toPos.y * rt.y;
+	float dz = std::abs(pos.z - centerPoint.z);
 
-		float vehAngle = NormalizeAngle(headingDeg);
-		float angleDiff = NormalizeAngleDiff(res.roadHeading - vehAngle);
+	float roadHeading = std::atan2(diff.y, diff.x) * BT_RAD_TO_DEG - 90.0f;
+	res.roadHeading = NormalizeAngle(roadHeading);
 
-		uint8_t leftLanes = 1;
-		uint8_t rightLanes = 1;
-		if (bestNaviId != -1 && static_cast<size_t>(bestNaviId) < m_navis.size()) {
-			leftLanes = m_navis[bestNaviId].leftLanes;
-			rightLanes = m_navis[bestNaviId].rightLanes;
+	float vehAngle = NormalizeAngle(headingDeg);
+	float angleDiff = NormalizeAngleDiff(res.roadHeading - vehAngle);
+
+	uint8_t leftLanes = 1;
+	uint8_t rightLanes = 1;
+	float naviDirX = fwd.x;
+	float naviDirY = fwd.y;
+	bool hasNavi = false;
+
+	if (bestNaviId != -1 && static_cast<size_t>(bestNaviId) < m_navis.size()) {
+		leftLanes = m_navis[bestNaviId].leftLanes;
+		rightLanes = m_navis[bestNaviId].rightLanes;
+		naviDirX = m_navis[bestNaviId].dirX;
+		naviDirY = m_navis[bestNaviId].dirY;
+		hasNavi = true;
+	}
+
+	float dot = fwd.x * naviDirX + fwd.y * naviDirY;
+	uint8_t fwdLanes = rightLanes;
+	uint8_t bwdLanes = leftLanes;
+	if (hasNavi && dot < 0.0f) {
+		fwdLanes = leftLanes;
+		bwdLanes = rightLanes;
+	}
+
+	bool isOneWay = (hasNavi && (fwdLanes == 0 || bwdLanes == 0));
+	uint8_t oneWayLanes = (bwdLanes == 0) ? std::max<uint8_t>(1, fwdLanes) : std::max<uint8_t>(1, bwdLanes);
+
+	float laneW = 3.75f;
+	float maxRight = isOneWay ? ((static_cast<float>(oneWayLanes) * 0.5f) * laneW + 3.0f) : ((fwdLanes > 0) ? (static_cast<float>(fwdLanes) * laneW + 3.0f) : 2.5f);
+	float maxLeft  = isOneWay ? ((static_cast<float>(oneWayLanes) * 0.5f) * laneW + 3.0f) : ((bwdLanes > 0) ? (static_cast<float>(bwdLanes) * laneW + 3.0f) : 2.5f);
+
+	// Check if sheltered by a low ceiling/roof (e.g. indoor/underground garage)
+	bool hasRoof = false;
+	float roofZ = CWorld::FindRoofZFor3DCoord(pos.x, pos.y, pos.z, &hasRoof);
+	bool isUnderRoof = (hasRoof && (roofZ > pos.z) && ((roofZ - pos.z) < 10.0f));
+
+	bool isOffRoad = false;
+	if (dz > 3.2f) {
+		isOffRoad = true;
+	} else if (lateralOffset >= 0.0f && lateralOffset > maxRight) {
+		isOffRoad = true;
+	} else if (lateralOffset < 0.0f && (-lateralOffset) > maxLeft) {
+		isOffRoad = true;
+	} else if (t < -0.25f || t > 1.25f) {
+		isOffRoad = true;
+	} else if (isUnderRoof && (dz > 1.8f || (lateralOffset >= 0.0f ? lateralOffset > (laneW + 1.0f) : -lateralOffset > (laneW + 1.0f)))) {
+		isOffRoad = true;
+	}
+
+	if (isOffRoad) {
+		res.status = ROAD_STATUS_OFF_ROAD;
+		res.lane.side = ROAD_SIDE_UNKNOWN;
+		res.lane.laneIndex = 0;
+		res.lane.totalLanesOnSide = 0;
+		res.lane.laneWidth = laneW;
+		res.lane.lateralOffsetFromCenter = 0.0f;
+		res.lane.currentLateralDeviation = lateralOffset;
+		res.lane.laneCenterPos = centerPoint;
+		res.lane.laneForwardTangent = fwd;
+		res.lane.legalHeading = res.roadHeading;
+		res.lane.isAlignedWithTraffic = false;
+
+		res.steering.targetPos = centerPoint;
+		res.steering.tangent = fwd;
+		res.steering.targetHeading = res.roadHeading;
+		return res;
+	}
+
+	bool isIntersection = (firstNode.linkCount > 2);
+
+	res.lane.laneWidth = laneW;
+
+	if (isOneWay) {
+		// ONE-WAY ROAD: Both left and right sides of the road travel in the same legal direction
+		float legalHeading = (bwdLanes == 0) ? roadHeading : NormalizeAngle(roadHeading + 180.0f);
+		CVector legalTangent = (bwdLanes == 0) ? fwd : -fwd;
+
+		float oneWayAngleDiff = NormalizeAngleDiff(legalHeading - vehAngle);
+		bool isAligned = (std::abs(oneWayAngleDiff) <= 65.0f);
+
+		res.roadHeading = legalHeading;
+		res.lane.side = (lateralOffset >= 0.0f) ? ROAD_SIDE_RIGHT : ROAD_SIDE_LEFT;
+		res.lane.totalLanesOnSide = oneWayLanes;
+
+		float roadWidth = static_cast<float>(oneWayLanes) * laneW;
+		float offsetFromLeft = std::clamp(lateralOffset + (roadWidth * 0.5f), 0.0f, roadWidth);
+		uint8_t lIdx = static_cast<uint8_t>(offsetFromLeft / laneW);
+		res.lane.laneIndex = std::min<uint8_t>(lIdx, oneWayLanes - 1);
+
+		res.lane.lateralOffsetFromCenter = lateralOffset;
+		res.lane.currentLateralDeviation = 0.0f;
+		res.lane.laneCenterPos = centerPoint + (rt * lateralOffset);
+		res.lane.laneForwardTangent = legalTangent;
+		res.lane.legalHeading = legalHeading;
+		res.lane.isAlignedWithTraffic = isAligned;
+
+		if (isIntersection) {
+			res.status = ROAD_STATUS_ON_INTERSECTION;
+		} else {
+			res.status = isAligned ? ROAD_STATUS_ON_RIGHT_SIDE : ROAD_STATUS_ON_WRONG_SIDE;
 		}
-
-		res.lane.laneWidth = 3.75f;
-		if (lateralOffset >= 0.0f) {
-			// Right side
+	} else {
+		// TWO-WAY ROAD: Right side is for forward traffic, left side is for opposing traffic
+		if (lateralOffset >= -0.8f) {
+			// Right side (forward traffic)
 			res.lane.side = ROAD_SIDE_RIGHT;
-			res.lane.totalLanesOnSide = rightLanes;
-			uint8_t lIdx = static_cast<uint8_t>(lateralOffset / 3.75f);
-			res.lane.laneIndex = std::min<uint8_t>(lIdx, std::max<uint8_t>(1, rightLanes) - 1);
+			res.lane.totalLanesOnSide = fwdLanes;
+			float posOffset = std::max(0.0f, lateralOffset);
+			uint8_t lIdx = static_cast<uint8_t>(posOffset / laneW);
+			res.lane.laneIndex = std::min<uint8_t>(lIdx, std::max<uint8_t>(1, fwdLanes) - 1);
 
-			res.lane.lateralOffsetFromCenter = (static_cast<float>(res.lane.laneIndex) + 0.5f) * 3.75f;
+			res.lane.lateralOffsetFromCenter = (static_cast<float>(res.lane.laneIndex) + 0.5f) * laneW;
 			res.lane.currentLateralDeviation = lateralOffset - res.lane.lateralOffsetFromCenter;
 			res.lane.laneCenterPos = centerPoint + (rt * res.lane.lateralOffsetFromCenter);
 			res.lane.laneForwardTangent = fwd;
-			res.lane.legalHeading = res.roadHeading;
+			res.lane.legalHeading = roadHeading;
 			res.lane.isAlignedWithTraffic = (std::abs(angleDiff) <= 60.0f);
-			if (res.status != ROAD_STATUS_ON_INTERSECTION) {
+			if (isIntersection) {
+				res.status = ROAD_STATUS_ON_INTERSECTION;
+			} else {
 				res.status = res.lane.isAlignedWithTraffic ? ROAD_STATUS_ON_RIGHT_SIDE : ROAD_STATUS_ON_WRONG_SIDE;
 			}
 		} else {
-			// Left side
+			// Left side (opposing traffic)
 			res.lane.side = ROAD_SIDE_LEFT;
-			res.lane.totalLanesOnSide = leftLanes;
+			res.lane.totalLanesOnSide = bwdLanes;
 			float leftPos = -lateralOffset;
-			uint8_t lIdx = static_cast<uint8_t>(leftPos / 3.75f);
-			res.lane.laneIndex = std::min<uint8_t>(lIdx, std::max<uint8_t>(1, leftLanes) - 1);
+			uint8_t lIdx = static_cast<uint8_t>(leftPos / laneW);
+			res.lane.laneIndex = std::min<uint8_t>(lIdx, std::max<uint8_t>(1, bwdLanes) - 1);
 
-			res.lane.lateralOffsetFromCenter = -(static_cast<float>(res.lane.laneIndex) + 0.5f) * 3.75f;
-			res.lane.currentLateralDeviation = leftPos - ((static_cast<float>(res.lane.laneIndex) + 0.5f) * 3.75f);
+			res.lane.lateralOffsetFromCenter = -(static_cast<float>(res.lane.laneIndex) + 0.5f) * laneW;
+			res.lane.currentLateralDeviation = leftPos - ((static_cast<float>(res.lane.laneIndex) + 0.5f) * laneW);
 			res.lane.laneCenterPos = centerPoint + (rt * res.lane.lateralOffsetFromCenter);
 			res.lane.laneForwardTangent = -fwd;
-			res.lane.legalHeading = NormalizeAngle(res.roadHeading + 180.0f);
+			res.lane.legalHeading = NormalizeAngle(roadHeading + 180.0f);
 			float leftAngleDiff = NormalizeAngleDiff(res.lane.legalHeading - vehAngle);
 			res.lane.isAlignedWithTraffic = (std::abs(leftAngleDiff) <= 60.0f);
-			if (res.status != ROAD_STATUS_ON_INTERSECTION) {
+			if (isIntersection) {
+				res.status = ROAD_STATUS_ON_INTERSECTION;
+			} else {
 				res.status = res.lane.isAlignedWithTraffic ? ROAD_STATUS_ON_RIGHT_SIDE : ROAD_STATUS_ON_WRONG_SIDE;
 			}
 		}
+	}
 
-		// Lookahead Steering Target
-		float targetT = (res.lane.side == ROAD_SIDE_RIGHT)
-			? (res.longitudinalProgress + (lookaheadDist / segLen))
-			: (res.longitudinalProgress - (lookaheadDist / segLen));
+	// Lookahead Steering Target
+	float targetT = (res.lane.side == ROAD_SIDE_RIGHT || isOneWay)
+		? (res.longitudinalProgress + (lookaheadDist / segLen))
+		: (res.longitudinalProgress - (lookaheadDist / segLen));
 
-		if (targetT >= 0.0f && targetT <= 1.0f) {
-			res.steering.targetPos = firstNode.pos + (diff * targetT) + (rt * res.lane.lateralOffsetFromCenter);
-			res.steering.tangent = res.lane.laneForwardTangent;
-			res.steering.targetHeading = res.lane.legalHeading;
-		} else {
-			res.steering.targetPos = centerPoint + (res.lane.laneForwardTangent * lookaheadDist) + (rt * res.lane.lateralOffsetFromCenter);
-			res.steering.tangent = res.lane.laneForwardTangent;
-			res.steering.targetHeading = res.lane.legalHeading;
-		}
+	if (targetT >= 0.0f && targetT <= 1.0f) {
+		res.steering.targetPos = firstNode.pos + (diff * targetT) + (rt * res.lane.lateralOffsetFromCenter);
+		res.steering.tangent = res.lane.laneForwardTangent;
+		res.steering.targetHeading = res.lane.legalHeading;
+	} else {
+		res.steering.targetPos = centerPoint + (res.lane.laneForwardTangent * lookaheadDist) + (rt * res.lane.lateralOffsetFromCenter);
+		res.steering.tangent = res.lane.laneForwardTangent;
+		res.steering.targetHeading = res.lane.legalHeading;
 	}
 
 	// Intersection options at next node
@@ -1313,19 +1498,21 @@ RoadSideResult RoadsManager::CheckVehicle(CVehicle* pVehicle) const
 
 	RoadSideResult res = CheckSide(pos, headingDeg);
 
-	// Dynamically integrate vehicle autopilot tracking from GTA SA engine
-	const auto& ap = pVehicle->m_autoPilot;
-	if (ap.m_nCurrentPathNodeInfo.m_nAreaId >= 0 &&
-	    ap.m_nCurrentPathNodeInfo.m_nAreaId < NUM_PATH_MAP_AREAS &&
-	    ThePaths.m_pNaviNodes[ap.m_nCurrentPathNodeInfo.m_nAreaId])
-	{
-		CCarPathLink* pLink = &ThePaths.m_pNaviNodes[ap.m_nCurrentPathNodeInfo.m_nAreaId][ap.m_nCurrentPathNodeInfo.m_nCarPathLinkId];
-		if (pLink) {
-			if (pLink->m_nNumLeftLanes > 0 || pLink->m_nNumRightLanes > 0) {
-				res.leftLanes = pLink->m_nNumLeftLanes;
-				res.rightLanes = pLink->m_nNumRightLanes;
-				if (ap.m_nCurrentLane >= 0) {
-					res.laneIndex = static_cast<uint8_t>(ap.m_nCurrentLane);
+	// Dynamically integrate vehicle autopilot tracking from GTA SA engine only if on a valid road
+	if (res.status != ROAD_STATUS_OFF_ROAD && res.status != ROAD_STATUS_INVALID_NODE) {
+		const auto& ap = pVehicle->m_autoPilot;
+		if (ap.m_nCurrentPathNodeInfo.m_nAreaId >= 0 &&
+		    ap.m_nCurrentPathNodeInfo.m_nAreaId < NUM_PATH_MAP_AREAS &&
+		    ThePaths.m_pNaviNodes[ap.m_nCurrentPathNodeInfo.m_nAreaId])
+		{
+			CCarPathLink* pLink = &ThePaths.m_pNaviNodes[ap.m_nCurrentPathNodeInfo.m_nAreaId][ap.m_nCurrentPathNodeInfo.m_nCarPathLinkId];
+			if (pLink) {
+				if (pLink->m_nNumLeftLanes > 0 || pLink->m_nNumRightLanes > 0) {
+					res.leftLanes = pLink->m_nNumLeftLanes;
+					res.rightLanes = pLink->m_nNumRightLanes;
+					if (ap.m_nCurrentLane >= 0) {
+						res.laneIndex = static_cast<uint8_t>(ap.m_nCurrentLane);
+					}
 				}
 			}
 		}

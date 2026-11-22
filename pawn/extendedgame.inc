@@ -125,6 +125,7 @@
 #define ROAD_STATUS_NO_NAVI_FOUND                     (3)
 #define ROAD_STATUS_ON_RIGHT_SIDE                     (4)
 #define ROAD_STATUS_ON_WRONG_SIDE                     (5)
+#define ROAD_STATUS_OFF_ROAD                          (6)
 
 // Road Sides
 #define ROAD_SIDE_UNKNOWN                             (0)

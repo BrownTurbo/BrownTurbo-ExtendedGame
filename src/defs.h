@@ -132,6 +132,7 @@ constexpr uint8_t ROAD_STATUS_NO_CONNECTING_NODE = 2;
 constexpr uint8_t ROAD_STATUS_NO_NAVI_FOUND      = 3;
 constexpr uint8_t ROAD_STATUS_ON_RIGHT_SIDE      = 4;
 constexpr uint8_t ROAD_STATUS_ON_WRONG_SIDE      = 5;
+constexpr uint8_t ROAD_STATUS_OFF_ROAD           = 6;
 
 // Road Sides
 constexpr int8_t ROAD_SIDE_UNKNOWN               = 0;

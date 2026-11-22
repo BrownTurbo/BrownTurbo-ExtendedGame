@@ -1727,7 +1727,7 @@ public OnPlayerRoadStatusChange(playerid, status, closestNode, Float:distanceToR
     new msg[144];
     switch (status) {
         case ROAD_STATUS_ON_RIGHT_SIDE: {
-            format(msg, sizeof(msg), "[Traffic] Correct lane (RIGHT SIDE) | Node: %d | Dist: %.1fm | Angle diff: %.1f deg",
+            format(msg, sizeof(msg), "[Traffic] Correct lane | Node: %d | Dist: %.1fm | Angle diff: %.1f deg",
                 closestNode, distanceToRoad, floatabs(vehicleAngle - roadAngle));
             SendClientMessage(playerid, 0x33CC33AA, msg);
         }
@@ -1748,6 +1748,10 @@ public OnPlayerRoadStatusChange(playerid, status, closestNode, Float:distanceToR
         }
         case ROAD_STATUS_NO_NAVI_FOUND: {
             format(msg, sizeof(msg), "[Traffic] Off-road or no navigation node nearby (Dist: %.1fm).", distanceToRoad);
+            SendClientMessage(playerid, 0x888888FF, msg);
+        }
+        case ROAD_STATUS_OFF_ROAD: {
+            format(msg, sizeof(msg), "[Traffic] Off-road / Parking / Garage (Dist: %.1fm).", distanceToRoad);
             SendClientMessage(playerid, 0x888888FF, msg);
         }
         default: {
